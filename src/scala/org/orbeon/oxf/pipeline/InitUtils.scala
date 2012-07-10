@@ -180,7 +180,7 @@ object InitUtils {
             val externalContext = new WebAppExternalContext(WebAppContext.instance(servletContext), session)
 
             withPipelineContext { pipelineContext ⇒
-                runProcessor(processor, externalContext, _, logger)
+                runProcessor(processor, externalContext, pipelineContext, logger)
             }
         }
     }
