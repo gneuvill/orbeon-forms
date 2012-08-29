@@ -15,7 +15,7 @@ package org.orbeon.exception
 
 import org.orbeon.oxf.common.ValidationException
 import org.orbeon.oxf.xml.dom4j.{ExtendedLocationData, LocationData}
-import org.apache.commons.lang.StringUtils._
+import org.apache.commons.lang3.StringUtils._
 import collection.JavaConverters._
 import org.orbeon.errorified._
 
@@ -32,7 +32,7 @@ object OrbeonFormatter extends Formatter {
         }
 
     override def getAllLocationData(t: Throwable): List[SourceLocation] =
-        ValidationException.getAllLocationData(t).asScala.toList flatMap (sourceLocation(_))
+        ValidationException.getAllLocationData(t).asScala.toList flatMap sourceLocation
 
     // Create SourceLocation from LocationData
     private def sourceLocation(locationData: LocationData) =

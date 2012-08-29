@@ -189,18 +189,17 @@
                     </icon>
                 </xsl:for-each>
 
-                <!-- Type if any -->
-                <xsl:if test="$section-bind/@type">
-                    <datatype>
-                        <xsl:value-of select="$section-bind/@type"/>
-                    </datatype>
-                </xsl:if>
-
                 <!-- Control template -->
-                <template>
-                    <!-- NOTE: Element doesn't have LHHA elements for now -->
-                    <xsl:element name="component:{$component-id}" namespace="{$component-namespace}"/>
-                </template>
+                <templates>
+                    <!-- Type if any -->
+                    <xsl:if test="$section-bind/@type">
+                        <bind type="{$section-bind/@type}"/>
+                    </xsl:if>
+                    <view>
+                        <!-- NOTE: Element doesn't have LHHA elements for now -->
+                        <xsl:element name="component:{$component-id}" namespace="{$component-namespace}"/>
+                    </view>
+                </templates>
             </metadata>
 
             <!-- XBL implementation -->
@@ -315,8 +314,8 @@
                         <xforms:group appearance="xxforms:internal">
                             <!-- Synchronize data with external world upon local value change -->
                             <!-- This assumes the element QName match, or the value is not copied -->
-                            <xforms:action ev:event="xforms-value-changed" if="exists($binding/*) and exists(xxforms:event('xxforms:binding'))">
-                                <xforms:var name="source-binding" value="xxforms:event('xxforms:binding')" as="element()"/>
+                            <xforms:action ev:event="xforms-value-changed" if="exists($binding/*) and exists(event('xxforms:binding'))">
+                                <xforms:var name="source-binding" value="event('xxforms:binding')" as="element()"/>
                                 <xforms:setvalue ref="$binding/*[resolve-QName(name(), .) = resolve-QName(name($source-binding), $source-binding)]" value="$source-binding"/>
                             </xforms:action>
 

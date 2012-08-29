@@ -304,7 +304,7 @@ public class XFormsToXHTML extends ProcessorImpl {
             final LocationDocumentResult documentResult = new LocationDocumentResult();
             documentReceiver.setResult(documentResult);
 
-            final XMLUtils.DigestContentHandler digestReceiver = computeDigest ? new XMLUtils.DigestContentHandler("MD5") : null;
+            final XMLUtils.DigestContentHandler digestReceiver = computeDigest ? new XMLUtils.DigestContentHandler() : null;
             final XMLReceiver extractorOutput;
             if (isLogStaticStateInput) {
                 extractorOutput = computeDigest ? new TeeXMLReceiver(documentReceiver, digestReceiver, getDebugReceiver(indentedLogger)) : new TeeXMLReceiver(documentReceiver, getDebugReceiver(indentedLogger));
@@ -383,7 +383,7 @@ public class XFormsToXHTML extends ProcessorImpl {
                         ExternalContext.Response.REWRITE_MODE_ABSOLUTE);
 
                     if (!instance.cache()) {
-                        stage1CacheableState.addReference(null, resolvedDependencyURL, instance.credentials(), forwardSubmissionHeaders);
+                        stage1CacheableState.addReference(null, resolvedDependencyURL, instance.credentialsOrNull(), forwardSubmissionHeaders);
 
                         if (indentedLogger.isDebugEnabled())
                                 indentedLogger.logDebug("", "adding document cache dependency for non-cacheable instance", "instance URI", resolvedDependencyURL);
@@ -401,7 +401,7 @@ public class XFormsToXHTML extends ProcessorImpl {
         // Set caching dependencies if the input was actually read
         // TODO: check all models/instances
         // Q: should use static dependency information instead? what about schema imports and instance replacements?
-        for (final XFormsModel currentModel: containingDocument.getModels()) {
+        for (final XFormsModel currentModel: containingDocument.getModelsJava()) {
             // Add schema dependencies
             final String[] schemaURIs = currentModel.getSchemaURIs();
             // TODO: We should also use dependencies computed in XFormsModelSchemaValidator.SchemaInfo

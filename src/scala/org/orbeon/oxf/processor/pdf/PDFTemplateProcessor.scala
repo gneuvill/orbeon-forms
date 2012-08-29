@@ -288,7 +288,17 @@ class PDFTemplateProcessor extends HttpBinarySerializer with Logging {// TODO: H
                     Image.getInstance(os.toByteArray)
                 case None ⇒
                     val url = URLFactory.createURL(hrefAttribute)
-                    val connectionResult = (new Connection).open(NetUtils.getExternalContext, context.logger, false, Connection.Method.GET.name, url, null, null, null, null, Connection.getForwardHeaders)
+
+                    val connectionResult =
+                        Connection(
+                            "GET",
+                            url,
+                            None,
+                            None,
+                            Connection.buildConnectionHeaders(None, Map(), Option(Connection.getForwardHeaders))(context.logger),
+                            loadState = true,
+                            logBody = false)(context.logger).connect(saveState = true)
+
                     if (connectionResult.statusCode != 200) {
                         connectionResult.close()
                         throw new OXFException("Got invalid return code while loading image: " + url.toExternalForm + ", " + connectionResult.statusCode)
@@ -442,7 +452,7 @@ object PDFTemplateProcessor {
         }
 
         def resolveAVT(attributeName: String, otherAttributeName: String = null) =
-            Option(att(attributeName)) orElse Option(Option(otherAttributeName) map (att(_)) orNull) map
+            Option(att(attributeName)) orElse Option(Option(otherAttributeName) map att orNull) map
                 (XPathCache.evaluateAsAvt(contextItem, _, new NamespaceMapping(Dom4jUtils.getNamespaceContextNoDefault(element)), jVariables, functionLibrary, null, null, element.getData.asInstanceOf[LocationData])) orNull
 
         def getFontAttributes = {

@@ -21,13 +21,12 @@ import org.orbeon.oxf.resources.ResourceManagerWrapper
 import org.orbeon.scaxon.XML._
 import org.orbeon.saxon.dom4j.DocumentWrapper
 import org.orbeon.oxf.util.XPathCache
-import org.orbeon.oxf.processor.xinclude.XIncludeProcessor
 import collection.JavaConverters._
 import org.orbeon.oxf.xml._
 import dom4j.LocationData
 import processor.handlers.xhtml.XHTMLBodyHandler
 import org.orbeon.saxon.om.NodeInfo
-import org.apache.commons.lang.StringUtils
+import org.apache.commons.lang3.StringUtils
 import org.orbeon.oxf.common.{ValidationException, OXFException}
 import java.util.{List ⇒ JList}
 import xbl.{Scope, XBLContainer}
@@ -134,7 +133,7 @@ object XFormsError {
             // Write out result using XInclude semantics
             // NOTE: Parent namespace information is not passed here, and that is probably not right
             TransformerUtils.writeDom4j(unwrapElement(template.rootElement),
-                new EmbeddedDocumentXMLReceiver(new XIncludeProcessor.XIncludeXMLReceiver(null, helper.getXmlReceiver, null, null)))
+                new EmbeddedDocumentXMLReceiver(new XIncludeReceiver(null, helper.getXmlReceiver, null, null)))
         }
     }
 

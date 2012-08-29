@@ -13,7 +13,7 @@
  */
 package org.orbeon.oxf.xforms;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.orbeon.oxf.common.ValidationException;
 import org.orbeon.oxf.properties.Properties;
 import org.orbeon.oxf.properties.PropertySet;
@@ -260,8 +260,6 @@ public class XFormsProperties {
     }
 
     // Global properties
-    private static final String PASSWORD_PROPERTY = XFORMS_PROPERTY_PREFIX + "password";
-
     private static final String STORE_APPLICATION_SIZE_PROPERTY = XFORMS_PROPERTY_PREFIX + "store.application.size";
     private static final int STORE_APPLICATION_SIZE_DEFAULT = 20 * 1024 * 1024;
 
@@ -329,10 +327,6 @@ public class XFormsProperties {
 
         final PropertyDefinition propertyDefinition = getPropertyDefinition(propertyName);
         return (propertyDefinition == null) ? null : propertyDefinition.parseProperty(propertyValue);
-    }
-
-    public static String getXFormsPassword() {
-        return Properties.instance().getPropertySet().getString(PASSWORD_PROPERTY);
     }
 
     public static Set<String> getDebugLogging() {
@@ -519,37 +513,6 @@ public class XFormsProperties {
         return getBooleanProperty(containingDocument, EXPOSE_XPATH_TYPES_PROPERTY);
     }
 
-    /**
-     * Get a format string given the given type and language.
-     *
-     * @param containingDocument    containing document
-     * @param typeName              type name, e.g. "date", "dateTime", etc.
-     * @param lang                  language, null, "en", "fr-CH"
-     * @return                      format string, null if not found
-     */
-    public static String getTypeOutputFormat(XFormsContainingDocument containingDocument, String typeName, String lang) {
-        final StringBuilder sb = new StringBuilder(TYPE_OUTPUT_FORMAT_PROPERTY_PREFIX);
-
-        if (lang == null) {
-            sb.append("*.*.");
-        } else {
-            final String[] langElements = StringUtils.split(lang, '-');
-            // Support e.g. "en" or "fr-CH"
-            for (int i = 0; i < 2; i++) {
-                if (i < langElements.length) {
-                    sb.append(langElements[i]);
-                    sb.append('.');
-                } else {
-                    sb.append("*.");
-                }
-            }
-        }
-
-        sb.append(typeName);
-
-        return getStringProperty(containingDocument, sb.toString());
-    }
-
     public static String getTypeInputFormat(XFormsContainingDocument containingDocument, String typeName) {
         return getStringProperty(containingDocument, TYPE_INPUT_FORMAT_PROPERTY_PREFIX + typeName);
     }
@@ -565,21 +528,6 @@ public class XFormsProperties {
             return result;
         else
             return Connection.getForwardHeaders();
-    }
-
-    public static String getForwardSubmissionHeaders(XFormsContainingDocument containingDocument, boolean forwardUserAgent) {
-        // NOTE about headers forwarding: forwarding the user agent makes sense when dealing with resources that typically
-        // would come from the client browser, including:
-        //
-        // o submission with replace="all"
-        // o dynamic resources loaded by xforms:output
-        //
-        // Also useful when the target URL renders XForms in noscript mode, where some browser sniffing takes
-        // place for handling the <button> vs. <submit> element.
-        final String forwardSubmissionHeaders = XFormsProperties.getForwardSubmissionHeaders(containingDocument).trim().toLowerCase();
-        return forwardUserAgent
-                ? (forwardSubmissionHeaders.length() == 0 ? "" : forwardSubmissionHeaders + " ") + "user-agent"
-                : forwardSubmissionHeaders;
     }
 
     public static int getSubmissionPollDelay(XFormsContainingDocument containingDocument) {

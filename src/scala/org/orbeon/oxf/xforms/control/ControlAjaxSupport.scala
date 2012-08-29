@@ -18,7 +18,7 @@ import org.orbeon.oxf.xforms._
 import org.xml.sax.helpers.AttributesImpl
 import org.orbeon.oxf.xforms.XFormsConstants._
 import collection.mutable.LinkedHashSet
-import org.apache.commons.lang.StringUtils
+import org.apache.commons.lang3.StringUtils
 import AjaxSupport._
 import org.orbeon.oxf.xml.{XMLUtils, ContentHandlerHelper}
 
@@ -46,24 +46,8 @@ trait ControlAjaxSupport {
         // Class attribute
         added |= addAjaxClasses(attributesImpl, isNewlyVisibleSubtree, other, this)
 
-        // Label, help, hint, alert, etc.
-        def addAjaxLHHA() = {
-            var added = false
-
-            for {
-                lhhaType ← LHHA.values
-                value1 = if (isNewlyVisibleSubtree) null else other.getLHHA(lhhaType).value()
-                lhha2 = self.getLHHA(lhhaType)
-                value2 = lhha2.value()
-                if value1 != value2
-                attributeValue = Option(lhha2.escapedValue()) getOrElse ""
-            } yield
-                added |= addOrAppendToAttributeIfNeeded(attributesImpl, lhhaType.name(), attributeValue, isNewlyVisibleSubtree, attributeValue == "")
-
-            added
-        }
-
-        added |= addAjaxLHHA()
+        // LHHA
+        added |= addAjaxLHHA(other, attributesImpl, isNewlyVisibleSubtree)
 
         // Visited
         if ((Option(other) map (_.visited) getOrElse false) != visited) {
@@ -73,6 +57,23 @@ trait ControlAjaxSupport {
 
         // Output control-specific attributes
         added |= addAjaxCustomAttributes(attributesImpl, isNewlyVisibleSubtree, other)
+
+        added
+    }
+
+    // Label, help, hint, alert
+    def addAjaxLHHA(other: XFormsControl, attributesImpl: AttributesImpl, isNewlyVisibleSubtree: Boolean): Boolean = {
+        var added = false
+
+        for {
+            lhhaType ← LHHA.values
+            value1 = if (isNewlyVisibleSubtree) null else other.getLHHA(lhhaType).value()
+            lhha2 = self.getLHHA(lhhaType)
+            value2 = lhha2.value()
+            if value1 != value2
+            attributeValue = Option(lhha2.escapedValue()) getOrElse ""
+        } yield
+            added |= addOrAppendToAttributeIfNeeded(attributesImpl, lhhaType.name(), attributeValue, isNewlyVisibleSubtree, attributeValue == "")
 
         added
     }

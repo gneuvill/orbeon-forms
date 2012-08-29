@@ -46,7 +46,6 @@ import org.orbeon.saxon.value.Value;
 import scala.Option;
 import scala.collection.Seq;
 
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
 
@@ -208,7 +207,7 @@ public class XFormsModel implements XFormsEventTarget, XFormsEventObserver, XFor
     /**
      * Get object with the id specified.
      */
-    public Object getObjectByEffectiveId(String effectiveId) {
+    public XFormsObject getObjectByEffectiveId(String effectiveId) {
 
         // If prefixes or suffixes don't match, object can't be found here
         if (!container().getFullPrefix().equals(XFormsUtils.getEffectiveIdPrefix(effectiveId))
@@ -229,9 +228,9 @@ public class XFormsModel implements XFormsEventTarget, XFormsEventObserver, XFor
      * @param contextItem        context item, or null (used for bind resolution only)
      * @return                   object, or null if not found
      */
-    public Object resolveObjectById(String sourceEffectiveId, String targetStaticId, Item contextItem) {
+    public XFormsObject resolveObjectById(String sourceEffectiveId, String targetStaticId, Item contextItem) {
 
-        if (XFormsUtils.isEffectiveId(targetStaticId))
+        if (XFormsUtils.isEffectiveId(targetStaticId) || XFormsUtils.isAbsoluteId(targetStaticId))
             throw new OXFException("Target id must be static id: " + targetStaticId);
 
         // Check this id
@@ -673,17 +672,15 @@ public class XFormsModel implements XFormsEventTarget, XFormsEventObserver, XFor
             if (indentedLogger.isDebugEnabled())
                 indentedLogger.logDebug("load", "getting document from URI", "URI", absoluteURLString);
 
-            final URL absoluteResolvedURL;
-            try {
-                absoluteResolvedURL = URLFactory.createURL(absoluteURLString);
-            } catch (MalformedURLException e) {
-                throw new OXFException("Invalid URL: " + absoluteURLString);
-            }
+            final URL absoluteResolvedURL = URLFactory.createURL(absoluteURLString);
 
-            final ConnectionResult connectionResult = new Connection().open(
-                    NetUtils.getExternalContext(), indentedLogger, BaseSubmission.isLogBody(),
-                    Connection.Method.GET.name(), absoluteResolvedURL, instance.credentials(),
-                    null, null, null, XFormsProperties.getForwardSubmissionHeaders(containingDocument));
+            final Map<String, String[]> headers =
+                Connection.jBuildConnectionHeaders(absoluteResolvedURL.getProtocol(), instance.credentialsOrNull(), null,
+                    XFormsProperties.getForwardSubmissionHeaders(containingDocument), indentedLogger);
+
+            final ConnectionResult connectionResult = Connection.apply(
+                "GET", absoluteResolvedURL, instance.credentialsOrNull(), null,
+                headers, true, BaseSubmission.isLogBody(), indentedLogger).connect(true);
 
             try {
                 // Handle connection errors
@@ -715,11 +712,11 @@ public class XFormsModel implements XFormsEventTarget, XFormsEventObserver, XFor
 
             if (!instance.readonly()) {
                 instanceDocument = containingDocument.getURIResolver().readAsDom4j(
-                        absoluteURLString, instance.credentials(),
+                        absoluteURLString, instance.credentialsOrNull(),
                         XFormsProperties.getForwardSubmissionHeaders(containingDocument));
             } else {
                 instanceDocument = containingDocument.getURIResolver().readAsTinyTree(XPathCache.getGlobalConfiguration(),
-                        absoluteURLString, instance.credentials(),
+                        absoluteURLString, instance.credentialsOrNull(),
                         XFormsProperties.getForwardSubmissionHeaders(containingDocument));
             }
         }

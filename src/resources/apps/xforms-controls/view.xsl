@@ -78,18 +78,14 @@
                 .fb-itemset-editor-dialog .xforms-invalid .xforms-input-input { border-color: #DF731B }     /* Show errors also for fields that aren't visited */
 
                 /* ***** Styles from form-runner-orbeon.css ***********************************************************/
-                .xforms-input input, textarea.xforms-textarea, input.xforms-secret, .xforms-textarea textarea, .xforms-secret input {
+                .xforms-input input, .xforms-textarea textarea, .xforms-secret input,.xbl-component .xbl-html-input  {
                     border: 1px solid #ccc;
                 }
 
                 .xforms-label { font-weight: bold }
 
                 /* Colored border for invalid fields */
-                /* NOTE: style required-empty as well to show user which are the required fields */
-                .xforms-invalid-visited .xforms-input-input, textarea.xforms-invalid-visited,
-                    .xforms-required-empty .xforms-input-input, textarea.xforms-required-empty,
-                    input.xforms-required-empty, .xforms-required-empty input
-                        { border-color: #DF731B }
+                .xforms-invalid-visited input, .xforms-invalid-visited textarea { border-color: #DF731B }
 
                 .xforms-alert-active {
                     font-weight: bold;
@@ -227,43 +223,43 @@
             <xsl:copy-of select="@*"/>
             <xsl:attribute name="class" select="string-join((tokenize(@class, '\s+'), 'xforms-disable-hint-as-tooltip'), ' ')"/>
 
+            <xhtml:div id="fr-view">
+                <xhtml:div id="doc2" class="fr-doc">
+                    <!-- Expose resources variables -->
+                    <xxforms:variable name="fr-resources" select="instance('fr-fr-resources')/resource[@xml:lang = instance('fr-settings-instance')/lang]"/>
+                    <xxforms:variable name="form-resources" select="instance('fr-form-resources')/resource[@xml:lang = instance('fr-settings-instance')/lang]"/>
 
-            <xhtml:div id="doc2" class="fr-doc">
-                <!-- Expose resources variables -->
-                <xxforms:variable name="fr-resources" select="instance('fr-fr-resources')/resource[@xml:lang = instance('fr-settings-instance')/lang]"/>
-                <xxforms:variable name="form-resources" select="instance('fr-form-resources')/resource[@xml:lang = instance('fr-settings-instance')/lang]"/>
+                    <xhtml:div class="fr-selectors">
+                        <!-- Page size selector -->
+                        <fr:link-select1 ref="instance('fr-settings-instance')/page-size">
+                            <xforms:label ref="$fr-resources/detail/labels/page-size"/>
+                            <xforms:itemset nodeset="$fr-resources/detail/items/page-size/item">
+                                <xforms:label ref="label"/>
+                                <xforms:value ref="value"/>
+                            </xforms:itemset>
+                            <!-- NOTE: We can't use AVTs to implement this because we are changing an element id -->
+                            <xxforms:script ev:event="xforms-value-changed">
+                                var formID = ORBEON.xforms.Controls.getForm(this).id;
+                                $(this).parents('.fr-doc')[0].id = ORBEON.xforms.Document.getValue(ORBEON.xforms.Globals.ns[formID] + 'page-size');
+                            </xxforms:script>
+                        </fr:link-select1>
+                        <xforms:output id="page-size" ref="instance('fr-settings-instance')/page-size" style="display: none"/>
 
-                <xhtml:div class="fr-selectors">
-                    <!-- Page size selector -->
-                    <fr:link-select1 ref="instance('fr-settings-instance')/page-size">
-                        <xforms:label ref="$fr-resources/detail/labels/page-size"/>
-                        <xforms:itemset nodeset="$fr-resources/detail/items/page-size/item">
-                            <xforms:label ref="label"/>
-                            <xforms:value ref="value"/>
-                        </xforms:itemset>
-                        <!-- NOTE: We can't use AVTs to implement this because we are changing an element id -->
-                        <xxforms:script ev:event="xforms-value-changed">
-                            var container = YAHOO.util.Dom.getAncestorByClassName(this, "fr-doc");
-                            var formID = ORBEON.xforms.Controls.getForm(this).id;
-                            container.id = ORBEON.xforms.Document.getValue(ORBEON.xforms.Globals.ns[formID] + 'page-size');
-                        </xxforms:script>
-                    </fr:link-select1>
-                    <xforms:output id="page-size" ref="instance('fr-settings-instance')/page-size" style="display: none"/>
+                        <!-- Language selector -->
+                        <fr:link-select1 ref="instance('fr-settings-instance')/lang">
+                            <xforms:label ref="$fr-resources/detail/labels/language"/>
+                            <xforms:itemset nodeset="instance('fr-form-resources')/resource">
+                                <xforms:label value="xxforms:instance('fr-languages-instance')/language[@code = context()/@xml:lang]/@native-name"/>
+                                <xforms:value ref="@xml:lang"/>
+                            </xforms:itemset>
+                        </fr:link-select1>
+                    </xhtml:div>
 
-                    <!-- Language selector -->
-                    <fr:link-select1 ref="instance('fr-settings-instance')/lang">
-                        <xforms:label ref="$fr-resources/detail/labels/language"/>
-                        <xforms:itemset nodeset="instance('fr-form-resources')/resource">
-                            <xforms:label value="xxforms:instance('fr-languages-instance')/language[@code = context()/@xml:lang]/@native-name"/>
-                            <xforms:value ref="@xml:lang"/>
-                        </xforms:itemset>
-                    </fr:link-select1>
+                    <!-- Form -->
+                    <xforms:group id="fr-form-group" appearance="xxforms:internal">
+                        <xsl:apply-templates/>
+                    </xforms:group>
                 </xhtml:div>
-
-                <!-- Form -->
-                <xforms:group id="fr-form-group" appearance="xxforms:internal">
-                    <xsl:apply-templates/>
-                </xforms:group>
             </xhtml:div>
 
             <!-- Import Form Builder itemset editor -->

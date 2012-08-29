@@ -13,7 +13,7 @@
  */
 package org.orbeon.oxf.xforms.processor.handlers.xhtml;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.dom4j.QName;
 import org.orbeon.oxf.pipeline.api.ExternalContext;
 import org.orbeon.oxf.pipeline.api.XMLReceiver;
@@ -201,19 +201,18 @@ public class XHTMLBodyHandler extends XFormsBaseHandlerXHTML {
             // Templates
             {
                 final String spanQName = XMLUtils.buildQName(htmlPrefix, "span");
-                final String TEMPLATE_ID = "$xforms-effective-id$";
 
                 // HACK: We would be ok with just one template, but IE 6 doesn't allow setting the input/@type attribute properly
 
                 // xforms:select[@appearance = 'full'], xforms:input[@type = 'xs:boolean']
                 XFormsSelect1Handler.outputItemFullTemplate(this, xmlReceiver, htmlPrefix, spanQName,
                         containingDocument, reusableAttributes, attributes,
-                        "xforms-select-full-template", TEMPLATE_ID, true, "checkbox");
+                        "xforms-select-full-template", "$xforms-item-name$", true, "checkbox");
 
                 // xforms:select1[@appearance = 'full']
                 XFormsSelect1Handler.outputItemFullTemplate(this, xmlReceiver, htmlPrefix, spanQName,
                         containingDocument, reusableAttributes, attributes,
-                        "xforms-select1-full-template", TEMPLATE_ID, true, "radio");
+                        "xforms-select1-full-template", "$xforms-item-name$", false, "radio");
             }
 
         } else {
@@ -322,8 +321,7 @@ public class XHTMLBodyHandler extends XFormsBaseHandlerXHTML {
                 final ElementAnalysis elementAnalysis = getElementAnalysis(attributes, handlerContext);
 
                 // XFormsAnnotatorContentHandler adds this appearance if needed
-                // NOTE: we just check on the attribute value instead of resolving the QName, so that XFormsAnnotatorContentHandler
-                // doesn't have to declare the xxforms:* prefix.
+                // See: https://github.com/orbeon/orbeon-forms/issues/418
                 final String appearanceAttributeValue = attributes.getValue(XFormsConstants.APPEARANCE_QNAME.getName());
                 return XFormsConstants.XXFORMS_SEPARATOR_APPEARANCE_QNAME.getQualifiedName().equals(appearanceAttributeValue) ? elementAnalysis : null;
             }

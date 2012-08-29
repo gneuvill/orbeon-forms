@@ -13,18 +13,16 @@
  */
 package org.orbeon.oxf.xforms.state;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Test;
-import org.orbeon.oxf.common.OXFException;
 import org.orbeon.oxf.pipeline.api.ExternalContext;
 import org.orbeon.oxf.processor.test.TestExternalContext;
 import org.orbeon.oxf.test.ResourceManagerTestBase;
 import org.orbeon.oxf.util.NetUtils;
-import org.orbeon.oxf.util.UUIDUtils;
+import org.orbeon.oxf.util.SecureUtils;
 import org.orbeon.oxf.xforms.XFormsContainingDocument;
 import org.orbeon.oxf.xforms.XFormsProperties;
 import org.orbeon.oxf.xforms.XFormsStaticState;
-import org.orbeon.oxf.xforms.XFormsUtils;
 import org.orbeon.oxf.xforms.analysis.XFormsStaticStateTest;
 import org.orbeon.oxf.xforms.event.ClientEvents;
 import org.orbeon.oxf.xforms.event.XFormsEvent;
@@ -83,36 +81,6 @@ public class XFormsStateManagerTest extends ResourceManagerTestBase {
         assertNull(XFormsDocumentCache.instance().takeDocument(document.getUUID()));
     }
 
-    @Test(expected=OXFException.class)
-    public void testClientStaticStateEncrypted() {
-        final XFormsState state = createDocumentGetState();
-
-        // This should throw an exception
-        XFormsUtils.decodeXML(state.staticState(), "WrongPassword");
-    }
-
-    @Test(expected=OXFException.class)
-    public void testClientDynamicStateEncrypted() {
-        final XFormsState state = createDocumentGetState();
-
-        // This should throw an exception
-        XFormsUtils.decodeXML(state.dynamicState().encodeToString(XFormsProperties.isGZIPState(), true), "WrongPassword");
-    }
-
-    private XFormsState createDocumentGetState() {
-        final XFormsStaticState staticState = XFormsStaticStateTest.getStaticState("oxf:/org/orbeon/oxf/xforms/state/client-nocache.xhtml");
-        final XFormsContainingDocument document = new XFormsContainingDocument(staticState, null, null, null);
-
-        final String staticStateString = stateManager.getClientEncodedStaticState(document);
-        final String dynamicStateString = stateManager.getClientEncodedDynamicState(document);
-
-        // X2 is the prefix saying it's encrypted
-        assertTrue(staticStateString.startsWith("X2"));
-        assertTrue(dynamicStateString.startsWith("X2"));
-
-        return new XFormsState(scala.Option.apply(staticState.digest()), staticStateString, DynamicState.apply(document));
-    }
-
     private static class State {
         public XFormsContainingDocument document;
         public String uuid;
@@ -138,7 +106,7 @@ public class XFormsStateManagerTest extends ResourceManagerTestBase {
             state1.staticStateString = stateManager.getClientEncodedStaticState(state1.document);
             state1.dynamicStateString = stateManager.getClientEncodedDynamicState(state1.document);
 
-            assertEquals(state1.uuid.length(), UUIDUtils.UUID_LENGTH);
+            assertEquals(state1.uuid.length(), SecureUtils.HexIdLength());
             assertNotNull(StringUtils.trimToNull(state1.staticStateString));
             assertNotNull(StringUtils.trimToNull(state1.dynamicStateString));
 
@@ -203,7 +171,7 @@ public class XFormsStateManagerTest extends ResourceManagerTestBase {
             state1.staticStateString = stateManager.getClientEncodedStaticState(state1.document);
             state1.dynamicStateString = stateManager.getClientEncodedDynamicState(state1.document);
 
-            assertEquals(state1.uuid.length(), UUIDUtils.UUID_LENGTH);
+            assertEquals(state1.uuid.length(), SecureUtils.HexIdLength());
             assertNull(StringUtils.trimToNull(state1.staticStateString));
             assertNull(StringUtils.trimToNull(state1.dynamicStateString));
 

@@ -91,6 +91,7 @@ class XFormsControl(
             // such as updating the error summary. What should be implemented is a better diff mechanism, for example lazy
             // copy of control properties upon mutation, rather than the current XFormsControlLocal/full clone alternative.
             containingDocument.getControls.cloneInitialStateIfNeeded()
+            containingDocument.getControls.markDirtySinceLastRequest(false)
             _visited = visited
         }
 
@@ -228,8 +229,7 @@ class XFormsControl(
         evaluateExtensionAttributes(AjaxSupport.StandardExtensionAttributes)
 
         // Evaluate custom extension attributes
-        Option(getExtensionAttributes) foreach
-            (evaluateExtensionAttributes(_))
+        Option(getExtensionAttributes) foreach evaluateExtensionAttributes
     }
 
     /**

@@ -17,7 +17,7 @@ import org.orbeon.oxf.xforms._
 import analysis.{XFormsExtractorContentHandler, XFormsAnnotatorContentHandler, PartAnalysisImpl, Metadata}
 import processor.handlers.xhtml.XHTMLHeadHandler
 import org.orbeon.oxf.properties.PropertySet
-import org.apache.commons.lang.StringUtils
+import org.apache.commons.lang3.StringUtils
 import org.orbeon.oxf.resources.ResourceManagerWrapper
 import scala.collection.JavaConverters._
 
@@ -87,7 +87,7 @@ class XBLBindings(indentedLogger: IndentedLogger, partAnalysis: PartAnalysisImpl
 
     // Inline <xbl:xbl> and automatically-included XBL documents
     private val xblDocuments = (inlineXBL map ((_, 0L))) ++
-        (metadata.getBindingIncludesJava.asScala map (readXBLResource(_)))
+        (metadata.getBindingIncludesJava.asScala map readXBLResource)
 
     // Process <xbl:xbl>
     if (xblDocuments.nonEmpty) {
@@ -214,8 +214,8 @@ class XBLBindings(indentedLogger: IndentedLogger, partAnalysis: PartAnalysisImpl
         def annotateByElement(element: Element) =
             annotateSubtreeByElement(boundElement, element, newInnerScope, outerScope, XXBLScope.inner, newInnerScope)
 
-        val annotatedHandlers = abstractBinding.handlers map (annotateByElement(_))
-        val annotatedModels = abstractBinding.implementations map (annotateByElement(_))
+        val annotatedHandlers = abstractBinding.handlers        map annotateByElement
+        val annotatedModels   = abstractBinding.implementations map annotateByElement
 
         // Remember concrete binding information
         val newConcreteBinding =
@@ -277,7 +277,7 @@ class XBLBindings(indentedLogger: IndentedLogger, partAnalysis: PartAnalysisImpl
             val baseURI = XFormsUtils.resolveXMLBase(boundElement.orNull, null, ".").toString
     
             // Annotate tree
-            val fullAnnotatedTree = annotateShadowTree(rawTree, containerScope.fullPrefix, false)
+            val fullAnnotatedTree = annotateShadowTree(rawTree, containerScope.fullPrefix, hasFullUpdate = false)
     
             // Create transformer if compact tree is needed
             val (transformer, result) =
@@ -303,7 +303,7 @@ class XBLBindings(indentedLogger: IndentedLogger, partAnalysis: PartAnalysisImpl
             if (logShadowTrees)
                 debugResults(Seq(
                     "full tree" → Dom4jUtils.domToString(fullAnnotatedTree),
-                    "compact tree" → (compactTreeOption map (Dom4jUtils.domToString(_)) orNull)
+                    "compact tree" → (compactTreeOption map Dom4jUtils.domToString orNull)
                 ))
             
             // Result is full annotated tree and, if needed, the compact tree

@@ -14,19 +14,18 @@
 package org.orbeon.oxf.xforms.control
 
 import collection.JavaConverters._
-import java.util.{Collections ⇒ JCollections}
+import XFormsValueControl._
 import org.dom4j.Element
 import org.orbeon.oxf.common.OXFException
-import org.orbeon.oxf.xforms.XFormsProperties
-import org.orbeon.oxf.xforms.XFormsUtils
 import org.orbeon.oxf.xforms.analysis.XPathDependencies
 import org.orbeon.oxf.xforms.event.XFormsEvent
 import org.orbeon.oxf.xforms.event.events.XXFormsValue
 import org.orbeon.oxf.xforms.model.DataModel
 import org.orbeon.oxf.xforms.xbl.XBLContainer
+import org.orbeon.oxf.xforms.XFormsProperties
+import org.orbeon.oxf.xforms.XFormsConstants._
 import org.orbeon.oxf.xml.XMLConstants._
 import org.orbeon.oxf.xml.{ContentHandlerHelper, NamespaceMapping}
-import org.orbeon.saxon.om.Item
 import org.orbeon.saxon.om.NodeInfo
 import org.orbeon.saxon.value._
 
@@ -103,52 +102,57 @@ abstract class XFormsValueControl(container: XBLContainer, parent: XFormsControl
         ! isExternalValueEvaluated
 
     override def isValueChanged: Boolean = {
-        val result = ! XFormsUtils.compareStrings(previousValue, value)
+        val result = previousValue != value
         previousValue = value
         result
     }
 
-    /**
-     * Notify the control that its value has changed due to external user interaction. The value passed is a value as
-     * understood by the UI layer.
-     *
-     * @param value             the new external value
-     */
-    def storeExternalValue(value: String): Unit = {
-        // Set value into the instance
+    // This usually doesn't need to be overridden (only XFormsUploadControl as of 2012-08-15)
+    def storeExternalValue(externalValue: String) = doStoreExternalValue(externalValue)
 
+    // Subclasses can override this to translate the incoming external value
+    def translateExternalValue(externalValue: String) = externalValue
+
+    // Set the external value into the instance
+    final def doStoreExternalValue(externalValue: String): Unit = {
         // NOTE: Standard value controls should be bound to simple content only. Is there anything we should / can do
         // about this? See: https://github.com/orbeon/orbeon-forms/issues/13
 
-
-        val boundItem: Item = getBoundItem
+        val boundItem = getBoundItem
         if (! boundItem.isInstanceOf[NodeInfo])// this should not happen
             throw new OXFException("Control is no longer bound to a node. Cannot set external value.")
-        DataModel.jSetValueIfChanged(containingDocument, getIndentedLogger, this, getLocationData, boundItem.asInstanceOf[NodeInfo], value, "client", isCalculate = false)
+
+        val translatedValue = translateExternalValue(externalValue)
+
+        DataModel.jSetValueIfChanged(containingDocument, getIndentedLogger, this, getLocationData, boundItem.asInstanceOf[NodeInfo], translatedValue, "client", isCalculate = false)
 
         // NOTE: We do *not* call evaluate() here, as that will break the difference engine. doSetValue() above marks
         // the controls as dirty, and they will be evaluated when necessary later.
     }
 
-    final protected def getValueUseFormat(format: String): String = {
+    final protected def getValueUseFormat(format: Option[String]) =
+        format flatMap valueWithSpecifiedFormat orElse valueWithDefaultFormat
+
+    // Format value according to format attribute
+    final protected def valueWithSpecifiedFormat(format: String): Option[String] = {
         assert(isRelevant)
         assert(getValue ne null)
 
-//                final String lang = XFormsUtils.resolveXMLang(getControlElement());// this could be done as part of the static analysis?
-//                format = XFormsProperties.getTypeOutputFormat(containingDocument, typeName, lang);
+        evaluateAsString(format, Seq(StringValue.makeStringValue(getValue)), 1)
+    }
 
-        if (format eq null)
-            // Try default format for known types
-            Option(getBuiltinTypeName) flatMap
-                (typeName ⇒ Option(XFormsProperties.getTypeOutputFormat(containingDocument, typeName))) map
-                    (outputFormat ⇒ evaluateAsString(
-                        StringValue.makeStringValue(getValue),
-                        outputFormat,
-                        XFormsValueControl.FormatNamespaceMapping,
-                        getContextStack.getCurrentVariables)) orNull
-        else
-            // Format value according to format attribute
-            evaluateAsString(format, Seq[Item](StringValue.makeStringValue(getValue)).asJava, 1)
+    // Try default format for known types
+    final protected def valueWithDefaultFormat: Option[String] = {
+        assert(isRelevant)
+        assert(getValue ne null)
+
+        Option(getBuiltinTypeName) flatMap
+            (typeName ⇒ Option(XFormsProperties.getTypeOutputFormat(containingDocument, typeName))) flatMap
+                (evaluateAsString(
+                    _,
+                    Option(StringValue.makeStringValue(getValue)),
+                    FormatNamespaceMapping,
+                    getContextStack.getCurrentVariables))
     }
 
     /**
@@ -219,6 +223,13 @@ abstract class XFormsValueControl(container: XBLContainer, parent: XFormsControl
 }
 
 object XFormsValueControl {
-    // Assume xs: prefix for default formats
-    val FormatNamespaceMapping = new NamespaceMapping(Map(XSD_PREFIX → XSD_URI).asJava)
+
+    val FormatNamespaceMapping =
+        new NamespaceMapping(
+            Map(
+                XSD_PREFIX      → XSD_URI,
+                XFORMS_PREFIX   → XFORMS_NAMESPACE_URI,
+                XXFORMS_PREFIX  → XXFORMS_NAMESPACE_URI,
+                EXFORMS_PREFIX  → EXFORMS_NAMESPACE_URI
+            ).asJava)
 }

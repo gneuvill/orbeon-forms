@@ -17,7 +17,7 @@ import orbeon.apache.xerces.impl.Constants;
 import orbeon.apache.xerces.impl.XMLEntityManager;
 import orbeon.apache.xerces.impl.XMLErrorReporter;
 import orbeon.apache.xerces.xni.parser.XMLInputSource;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.dom4j.Element;
 import org.dom4j.QName;
@@ -31,7 +31,6 @@ import org.orbeon.oxf.processor.*;
 import org.orbeon.oxf.processor.generator.DOMGenerator;
 import org.orbeon.oxf.processor.generator.URLGenerator;
 import org.orbeon.oxf.processor.transformer.TransformerURIResolver;
-import org.orbeon.oxf.processor.xinclude.XIncludeProcessor;
 import org.orbeon.oxf.resources.URLFactory;
 import org.orbeon.oxf.util.*;
 import org.orbeon.oxf.xml.dom4j.Dom4jUtils;
@@ -57,7 +56,6 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CoderResult;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 public class XMLUtils {
@@ -212,16 +210,6 @@ public class XMLUtils {
         return (colonIndex == -1) ? qName : qName.substring(colonIndex + 1);
     }
 
-    /**
-     * Return "" if there is no prefix, null if the prefix is not mapped, a URI otherwise.
-     */
-    public static String uriFromQName(String qName, NamespaceSupport3 namespaceSupport) {
-        final String prefix = prefixFromQName(qName);
-        if ("".equals(prefix))
-            return "";
-        return namespaceSupport.getURI(prefix);
-    }
-
     public static String buildQName(String prefix, String localname) {
         return (prefix == null || prefix.equals("")) ? localname : prefix + ":" + localname;
     }
@@ -306,14 +294,13 @@ public class XMLUtils {
      * Given an input stream, return a reader. This performs encoding detection as per the XML spec. Caller must close
      * the resulting Reader when done.
      *
-     * @param uri           resource URI (probably unneeded)
      * @param inputStream   InputStream to process
      * @return              Reader initialized with the proper encoding
      * @throws IOException
      */
-    public static Reader getReaderFromXMLInputStream(String uri, InputStream inputStream) throws IOException {
+    public static Reader getReaderFromXMLInputStream(InputStream inputStream) throws IOException {
         // Create a Xerces XMLInputSource
-        final XMLInputSource inputSource = new XMLInputSource(uri, null, null, inputStream, null);
+        final XMLInputSource inputSource = new XMLInputSource(null, null, null, inputStream, null);
         // Obtain encoding from Xerces
         final XMLEntityManager entityManager = new XMLEntityManager();
         entityManager.setProperty(Constants.XERCES_PROPERTY_PREFIX + Constants.ERROR_REPORTER_PROPERTY, new XMLErrorReporter());// prevent NPE by providing this
@@ -434,7 +421,7 @@ public class XMLUtils {
         if (parserConfiguration.handleXInclude) {
             parserConfiguration =  new XMLUtils.ParserConfiguration(parserConfiguration.validating, false, parserConfiguration.externalEntities, parserConfiguration.uriReferences);
             resolver = new TransformerURIResolver(XMLUtils.ParserConfiguration.PLAIN);
-            xmlReceiver = new XIncludeProcessor.XIncludeXMLReceiver(null, xmlReceiver, parserConfiguration.uriReferences, resolver);
+            xmlReceiver = new XIncludeReceiver(null, xmlReceiver, parserConfiguration.uriReferences, resolver);
         } else {
             resolver = null;
         }
@@ -540,7 +527,7 @@ public class XMLUtils {
      * Compute a digest for a SAX source.
      */
     public static byte[] getDigest(Source source) {
-        final DigestContentHandler digester = new DigestContentHandler("MD5");
+        final DigestContentHandler digester = new DigestContentHandler();
         TransformerUtils.sourceToSAX(source, digester);
         return digester.getResult();
     }
@@ -575,22 +562,11 @@ public class XMLUtils {
         /**
          * Encoder has state and therefore cannot be shared across threads.
          */
-        private final CharsetEncoder charEncoder;
-        private java.nio.CharBuffer charBuff;
-        private java.nio.ByteBuffer byteBuff;
+        private final CharsetEncoder charEncoder = utf16BECharset.newEncoder();
+        private java.nio.CharBuffer charBuff = java.nio.CharBuffer.allocate(64);
+        private java.nio.ByteBuffer byteBuff = java.nio.ByteBuffer.allocate(128);
 
-        private MessageDigest digest;
-
-        public DigestContentHandler(String algorithm) {
-            try {
-                digest = MessageDigest.getInstance(algorithm);
-            } catch (NoSuchAlgorithmException e) {
-                throw new OXFException(e);
-            }
-            charEncoder = utf16BECharset.newEncoder();
-            charBuff = java.nio.CharBuffer.allocate(64);
-            byteBuff = java.nio.ByteBuffer.allocate(128);
-        }
+        private final MessageDigest digest = SecureUtils.defaultMessageDigest();
 
         private void ensureCharBuffRemaining(final int size) {
             if (charBuff.remaining() < size) {

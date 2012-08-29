@@ -1,7 +1,7 @@
 Orbeon Forms - Open source web forms done the right way
 =======================================================
 
-Last updated for Orbeon Forms 4.0 M6, July 2012
+Last updated for Orbeon Forms 4.0 M9, August 2012
 
 NOTE: This is a milestone build, not a final release.
 
@@ -174,7 +174,6 @@ This product includes software developed by the Apache Software Foundation
 - HttpComponents (<http://hc.apache.org/>)
 - log4j (<http://logging.apache.org/log4j/>)
 - Mime4j (<http://james.apache.org/mime4j/>)
-- ORO (<http://jakarta.apache.org/oro/>)
 - POI (<http://poi.apache.org/>)
 - Xerces (<http://xerces.apache.org/xerces-j/>)
 

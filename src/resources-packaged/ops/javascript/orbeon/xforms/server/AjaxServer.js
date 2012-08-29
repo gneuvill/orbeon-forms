@@ -1010,14 +1010,15 @@
                                         //  </span>
 
                                         // Get template
-                                        var template = YAHOO.util.Dom.hasClass(documentElement, "xforms-select")
+                                        var isFull = YAHOO.util.Dom.hasClass(documentElement, "xforms-select");
+                                        var template = isFull
                                                 ? ORBEON.util.Dom.get("xforms-select-full-template")
                                                 : ORBEON.util.Dom.get("xforms-select1-full-template");
                                         template = ORBEON.util.Dom.getChildElementByIndex(template, 0);
 
                                         // Get the span that contains the one span per checkbox/radio
                                         // This is the first span that has no class on it (we don't want to get a span for label, hint, help, alert)
-                                        var spanContainer = _.detect(documentElement.getElementsByTagName("span"), function(span) { return span.className == ""; });
+                                        var spanContainer = _.detect(documentElement.getElementsByTagName("span"), function(span) { return span.className == "xforms-items"; });
 
                                         // Remove spans and store current checked value
                                         var valueToChecked = {};
@@ -1039,8 +1040,8 @@
                                             templateClone.innerHTML = new String(templateClone.innerHTML).replace(new RegExp("\\$xforms-template-label\\$", "g"), itemElement.label.replace(new RegExp("\\$", "g"), "$$$$"));
                                             ORBEON.util.Utils.stringReplace(templateClone, "$xforms-template-value$", itemElement.value);
                                             var itemEffectiveId = ORBEON.util.Utils.appendToEffectiveId(controlId, "$$e" + itemIndex);
-                                            ORBEON.util.Utils.stringReplace(templateClone, "$xforms-item-effective-id$", itemEffectiveId);
-                                            ORBEON.util.Utils.stringReplace(templateClone, "$xforms-effective-id$", controlId);
+                                            ORBEON.util.Utils.stringReplace(templateClone, isFull ? "$xforms-item-id-select$" : "$xforms-item-id-select1$", itemEffectiveId);
+                                            ORBEON.util.Utils.stringReplace(templateClone, "$xforms-item-name$", controlId);
                                             if (! YAHOO.lang.isUndefined(itemElement.attributes) && ! YAHOO.lang.isUndefined(itemElement.attributes["class"])) {
                                                 templateClone.className += " " + itemElement.attributes["class"];
                                             }
@@ -1284,8 +1285,8 @@
                                                 insertIntoDocument([booleanTemplateClone]);
                                                 ORBEON.util.Utils.stringReplace(booleanTemplateClone, "$xforms-template-value$", "true");
                                                 var booleanEffectiveId = ORBEON.util.Utils.appendToEffectiveId(controlId, "$$e0");
-                                                ORBEON.util.Utils.stringReplace(booleanTemplateClone, "$xforms-item-effective-id$", booleanEffectiveId);
-                                                ORBEON.util.Utils.stringReplace(booleanTemplateClone, "$xforms-effective-id$", controlId);
+                                                ORBEON.util.Utils.stringReplace(booleanTemplateClone, "$xforms-item-id-select$", booleanEffectiveId);
+                                                ORBEON.util.Utils.stringReplace(booleanTemplateClone, "$xforms-item-name$", controlId);
 
                                                 // Update classes
                                                 YAHOO.util.Dom.addClass(documentElement, "xforms-type-boolean");
@@ -1426,13 +1427,10 @@
 
                                     // Update the required-empty/required-full even if the required has not changed or
                                     // is not specified as the value may have changed
-                                    var isRequiredEmpty;
                                     if (!isStaticReadonly && !YAHOO.util.Dom.hasClass(documentElement, "xforms-group")) {
                                         // We don't get the value for groups, so we are not calling this method as it would otherwise
                                         // incorrectly add the class xforms-required-empty on groups.
-                                        isRequiredEmpty = ORBEON.xforms.Controls.updateRequiredEmpty(documentElement, newControlValue);
-                                    } else {
-                                        isRequiredEmpty = false;
+                                        ORBEON.xforms.Controls.updateRequiredEmpty(documentElement, newControlValue);
                                     }
 
                                     // Store new label message in control attribute
@@ -1460,6 +1458,11 @@
                                     if (progressState != null && progressReceived != null && progressExpected != null
                                             && progressState != "" && progressReceived != "" && progressExpected != "")
                                         ORBEON.xforms.Page.getControl(documentElement).progress(progressState, parseInt(progressReceived), parseInt(progressExpected));
+
+                                    // Handle visited flag
+                                    var newVisited = ORBEON.util.Dom.getAttribute(controlElement, "visited");
+                                    if (newVisited)
+                                        ORBEON.xforms.Controls.updateVisited(documentElement, newVisited == 'true');
 
                                     // Notification event if the type changed
                                     if (recreatedInput) Controls.typeChangedEvent.fire({control: documentElement});

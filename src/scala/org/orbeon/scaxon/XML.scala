@@ -38,7 +38,7 @@ object XML {
 
     // Convenience methods for the XPath API
     def evalOne(item: Item, expr: String, namespaces: NamespaceMapping = XFormsStaticStateImpl.BASIC_NAMESPACE_MAPPING, variables: Map[String, ValueRepresentation] = null)(implicit library: FunctionLibrary = null) =
-        XPathCache.evaluaSingleteKeepItems(Seq(item).asJava, 1, expr, namespaces, if (variables eq null) null else variables.asJava, library, null, null, null)
+        XPathCache.evaluateSingleKeepItems(Seq(item).asJava, 1, expr, namespaces, if (variables eq null) null else variables.asJava, library, null, null, null)
 
     def eval(item: Item, expr: String, namespaces: NamespaceMapping = XFormsStaticStateImpl.BASIC_NAMESPACE_MAPPING, variables: Map[String, ValueRepresentation] = null)(implicit library: FunctionLibrary = null) =
         XPathCache.evaluate(item, expr, namespaces, if (variables eq null) null else variables.asJava, library, null, null, null)
@@ -308,10 +308,12 @@ object XML {
         def \@(attName: String): Seq[NodeInfo] = seq flatMap (_ \@ attName)
         def \@(attName: QName): Seq[NodeInfo] = seq flatMap (_ \@ attName)
         def \@(attName: (String, String)): Seq[NodeInfo] = seq flatMap (_ \@ attName)
+        def \@(test: Test): Seq[NodeInfo] = seq flatMap (_ \@ test)
 
         def \\@(attName: String): Seq[NodeInfo] = seq flatMap (_ \\@ attName)
         def \\@(attName: QName): Seq[NodeInfo] = seq flatMap (_ \\@ attName)
         def \\@(attName: (String, String)): Seq[NodeInfo] = seq flatMap (_ \\@ attName)
+        def \\@(test: Test): Seq[NodeInfo] = seq flatMap (_ \\@ test)
 
         def att(attName: String) = \@(attName)
         def child(test: Test) = \(test)
@@ -378,11 +380,12 @@ object XML {
     implicit def elemToNodeInfoSeq(e: Elem): Seq[NodeInfo] = elemToDocumentInfo(e) \ *
 
     implicit def stringSeqToSequenceIterator(seq: Seq[String]): SequenceIterator =
-        new ListIterator(seq map (stringToStringValue(_)) asJava)
+        new ListIterator(seq map stringToStringValue asJava)
 
     implicit def itemSeqToSequenceIterator[T <: Item](seq: Seq[T]): SequenceIterator = new ListIterator(seq.asJava)
 
     implicit def stringToQName(s: String) = QName.get(s)
+    implicit def tupleToQName(name: (String, String)) = QName.get(name._2, "", name._1)
     def stringToStringValue(s: String) = StringValue.makeStringValue(s)
 
     implicit def saxonIteratorToItem(i: SequenceIterator): Item = i.next()

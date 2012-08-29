@@ -238,7 +238,7 @@ class BindTree(model: Model, bindElements: Seq[Element]) {
 
     // Destroy the tree of binds
     def destroy(): Unit =
-        bindsById.values foreach (model.staticStateContext.partAnalysis.unmapScopeIds(_))
+        bindsById.values foreach model.staticStateContext.partAnalysis.unmapScopeIds
 
     // Add a new bind
     def addBind(rawBindElement: Element, parentId: String, precedingId: Option[String]): Unit = {
@@ -310,7 +310,7 @@ class BindTree(model: Model, bindElements: Seq[Element]) {
             def analyzeXPath() {
 
                 def booleanOrStringExpression =
-                    if (BooleanXPathMIPNames.contains(name)) "xs:boolean((" + expression + ")[1])" else "xs:string((" + expression + ")[1])"
+                    if (BooleanXPathMIPNames.contains(name)) "boolean(" + expression + ")" else "string((" + expression + ")[1])"
 
                 // Analyze and remember if figured out
                 Bind.this.analyzeXPath(getChildrenContext, bindsVariablesSeq, booleanOrStringExpression) match {
@@ -424,7 +424,7 @@ class BindTree(model: Model, bindElements: Seq[Element]) {
 
         // Compute value analysis if we have a type bound, otherwise don't bother
         override protected def computeValueAnalysis: Option[XPathAnalysis] = typeMIP match {
-            case Some(_) if hasBinding ⇒ Some(analyzeXPath(getChildrenContext, "xs:string(.[1])"))
+            case Some(_) if hasBinding ⇒ Some(analyzeXPath(getChildrenContext, "string(.)"))
             case _ ⇒ None
         }
 

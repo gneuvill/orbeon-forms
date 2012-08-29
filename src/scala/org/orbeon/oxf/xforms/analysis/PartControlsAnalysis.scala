@@ -29,7 +29,7 @@ trait PartControlsAnalysis extends TransientState {
     // type → Map of prefixedId → ElementAnalysis
     protected val controlTypes = HashMap[String, LinkedHashMap[String, ElementAnalysis]]()
     // type → Set of appearances
-    private val controlAppearances = HashMap[String, HashSet[QName]]();
+    private val controlAppearances = HashMap[String, HashSet[QName]]()
 
     // Special handling of attributes
     private[PartControlsAnalysis] var _attributeControls: Map[String, Map[String, AttributeControl]] = Map()
@@ -196,8 +196,7 @@ trait PartControlsAnalysis extends TransientState {
 
         tree match {
             case childrenBuilder: ChildrenBuilderTrait ⇒
-                childrenBuilder.descendants foreach
-                    (deindexControl(_))
+                childrenBuilder.descendants foreach deindexControl
 
                 if (! self)
                     childrenBuilder.children foreach

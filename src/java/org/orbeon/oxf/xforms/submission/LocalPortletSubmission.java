@@ -13,7 +13,6 @@
  */
 package org.orbeon.oxf.xforms.submission;
 
-import org.apache.commons.lang.StringUtils;
 import org.orbeon.oxf.externalcontext.AsyncExternalContext;
 import org.orbeon.oxf.externalcontext.AsyncRequest;
 import org.orbeon.oxf.externalcontext.ExternalContextWrapper;
@@ -106,8 +105,8 @@ public class LocalPortletSubmission extends BaseSubmission {
         final URI resolvedURI = XFormsUtils.resolveXMLBase(containingDocument, submission.getSubmissionElement(), p2.actionOrResource);
 
         // Headers
-        final Map<String, String[]> customHeaderNameValues = evaluateHeaders(submission.getModel().getContextStack());
-        final String[] headersToForward = StringUtils.split(XFormsProperties.getForwardSubmissionHeaders(containingDocument, p.isReplaceAll));
+        final Map<String, String[]> customHeaderNameValues = SubmissionUtils.evaluateHeaders(submission, p.isReplaceAll);
+        final String headersToForward = XFormsProperties.getForwardSubmissionHeaders(containingDocument);
 
         final String submissionEffectiveId = submission.getEffectiveId();
 
@@ -135,7 +134,7 @@ public class LocalPortletSubmission extends BaseSubmission {
                 try {
                     connectionResult = openLocalConnection(newExternalContext, response,
                         detailsLogger, containingDocument,
-                        p.actualHttpMethod, resolvedURI.toString(), sp.actualRequestMediatype, sp.messageBody,
+                        p.actualHttpMethod, resolvedURI.toString(), sp.actualRequestMediatype, p2.encoding, sp.messageBody,
                         sp.queryString, p.isReplaceAll, headersToForward, customHeaderNameValues, new SubmissionProcess() {
                             public void process(final ExternalContext.Request request, final ExternalContext.Response response) {
                                 // Delegate to portlet

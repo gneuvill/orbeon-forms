@@ -46,7 +46,7 @@ public class XFormsControls implements XFormsObjectResolver {
 
     // Crude flag to indicate that something might have changed since the last request. This caches simples cases where
     // an incoming change on the document does not cause any change to the data or controls. In that case, the control
-    // trees need not be compared
+    // trees need not be compared. A general mechanism detecting mutations in the proper places would be better.
     private boolean dirtySinceLastRequest;
 
     // Whether we currently require a UI refresh
@@ -245,7 +245,7 @@ public class XFormsControls implements XFormsObjectResolver {
      * @param effectiveId   effective id of the target
      * @return              object, or null if not found
      */
-    public Object getObjectByEffectiveId(String effectiveId) {
+    public XFormsObject getObjectByEffectiveId(String effectiveId) {
         return currentControlTree.getControl(effectiveId);
     }
 
@@ -258,7 +258,7 @@ public class XFormsControls implements XFormsObjectResolver {
      * @param contextItem               context item, or null (used for bind resolution only)
      * @return                          object, or null if not found
      */
-    public Object resolveObjectById(String sourceControlEffectiveId, String targetStaticId, Item contextItem) {
+    public XFormsObject resolveObjectById(String sourceControlEffectiveId, String targetStaticId, Item contextItem) {
         final String sourcePrefixedId = XFormsUtils.getPrefixedId(sourceControlEffectiveId);
         final Scope scope = containingDocument.getStaticOps().scopeForPrefixedId(sourcePrefixedId);
         final String targetPrefixedId = scope.prefixedIdForStaticId(targetStaticId);

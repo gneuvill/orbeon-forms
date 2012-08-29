@@ -19,7 +19,7 @@ import org.orbeon.oxf.xforms.event.XFormsEvents
 import org.orbeon.oxf.xforms.xbl.XBLContainer
 import org.orbeon.oxf.xforms.analysis.ElementAnalysis
 import org.orbeon.oxf.xforms.BindingContext
-import scala.collection.JavaConverters._
+import org.xml.sax.helpers.AttributesImpl
 
 /**
  * Control that represents a custom components.
@@ -49,7 +49,7 @@ class XFormsComponentControl(container: XBLContainer, parent: XFormsControl, ele
         // There may or may not be nested models
         newContainer.addAllModels()
         // Make sure there is location data
-        newContainer.setLocationData(getLocationData)
+        newContainer.locationData = getLocationData
 
         _nestedContainer = Some(newContainer)
     }
@@ -131,4 +131,14 @@ class XFormsComponentControl(container: XBLContainer, parent: XFormsControl, ele
     // Simply delegate but switch the container
     override def buildChildren(buildTree: (XBLContainer, BindingContext, ElementAnalysis, Seq[Int]) ⇒ Option[XFormsControl], idSuffix: Seq[Int]) =
         Controls.buildChildren(this, staticControl.children, (_, bindingContext, staticElement, idSuffix) ⇒ buildTree(nestedContainer, bindingContext, staticElement, idSuffix), idSuffix)
+
+    private lazy val handleLHHA = staticControl.binding.abstractBinding.modeLHHA && ! staticControl.binding.abstractBinding.modeLHHACustom
+
+    // Don't add Ajax LHHA for custom-lhha mode
+    override def addAjaxLHHA(other: XFormsControl, attributesImpl: AttributesImpl, isNewlyVisibleSubtree: Boolean) =
+        handleLHHA && super.addAjaxLHHA(other, attributesImpl, isNewlyVisibleSubtree)
+
+    // Consider LHHA hasn't externally changed for custom-lhha mode
+    override def compareLHHA(other: XFormsControl) =
+        ! handleLHHA || super.compareLHHA(other)
 }

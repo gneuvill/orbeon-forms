@@ -16,7 +16,6 @@ package org.orbeon.oxf.xml;
 import org.dom4j.Element;
 import org.orbeon.oxf.common.ValidationException;
 import org.orbeon.oxf.pipeline.api.XMLReceiver;
-import org.orbeon.oxf.processor.xinclude.XIncludeProcessor;
 import org.orbeon.oxf.xml.dom4j.LocationData;
 import org.xml.sax.Attributes;
 import org.xml.sax.Locator;
@@ -49,9 +48,9 @@ public class ElementHandlerController implements ElementHandlerContext, XMLRecei
     private HandlerInfo currentHandlerInfo;
     private boolean isFillingUpSAXStore;
 
-    private final NamespaceSupport3 namespaceSupport = new NamespaceSupport3();
+    private final NamespaceContext namespaceContext = new NamespaceContext();
 
-    private XIncludeProcessor.OutputLocator locator;
+    private OutputLocator locator;
 
     private int level = 0;
 
@@ -116,8 +115,8 @@ public class ElementHandlerController implements ElementHandlerContext, XMLRecei
         this.output = output;
     }
 
-    public NamespaceSupport3 getNamespaceSupport() {
-        return namespaceSupport;
+    public NamespaceContext getNamespaceContext() {
+        return namespaceContext;
     }
 
     public void startDocument() throws SAXException {
@@ -141,7 +140,7 @@ public class ElementHandlerController implements ElementHandlerContext, XMLRecei
             // Increment level before, so that if callees like start() and startElement() use us, the level is correct
             level++;
 
-            namespaceSupport.startElement();
+            namespaceContext.startElement();
 
             if (isFillingUpSAXStore) {
                 // Fill-up SAXStore
@@ -215,7 +214,7 @@ public class ElementHandlerController implements ElementHandlerContext, XMLRecei
                 output.endElement(uri, localname, qName);
             }
 
-            namespaceSupport.endElement();
+            namespaceContext.endElement();
 
             level--;
 
@@ -232,13 +231,13 @@ public class ElementHandlerController implements ElementHandlerContext, XMLRecei
     public void repeatBody() throws SAXException {
         // Replay content of current SAXStore
 
-        final int beforeLocatorCount = (this.locator != null) ? this.locator.getSize() : 0;
+        final int beforeLocatorCount = (this.locator != null) ? this.locator.size() : 0;
         currentHandlerInfo.saxStore.replay(this);
-        final int afterLocatorCount = (this.locator != null) ? this.locator.getSize() : 0;
+        final int afterLocatorCount = (this.locator != null) ? this.locator.size() : 0;
         if (beforeLocatorCount != afterLocatorCount) {
             // This means that the SAXStore replay called setDocumentLocator()
             assert afterLocatorCount == beforeLocatorCount + 1 : "incorrect locator stack state";
-            this.locator.popLocator();
+            this.locator.pop();
         }
     }
 
@@ -285,8 +284,8 @@ public class ElementHandlerController implements ElementHandlerContext, XMLRecei
                 // The current handler doesn't want forwarding
                 // Just ignore content
             } else {
-                // Update global NamespaceSupport
-                namespaceSupport.startPrefixMapping(prefix, uri);
+                // Update global NamespaceContext
+                namespaceContext.startPrefixMapping(prefix, uri);
                 // Send to output
                 output.startPrefixMapping(prefix, uri);
             }
@@ -373,13 +372,13 @@ public class ElementHandlerController implements ElementHandlerContext, XMLRecei
                 // This is likely the source's initial setDocumentLocator() call
 
                 // Use our own locator
-                this.locator = new XIncludeProcessor.OutputLocator();
-                this.locator.pushLocator(locator);
+                this.locator = new OutputLocator();
+                this.locator.push(locator);
                 // We don't forward this (anyway nobody is listening initially)
             } else {
                 // This is a repeat or component body replay (otherwise it's a bug)
                 // Push the SAXStore's locator
-                this.locator.pushLocator(locator);
+                this.locator.push(locator);
                 // But don't forward this! SAX prevents calls to setDocumentLocator() mid-course. Our own locator will do the job.
             }
         }

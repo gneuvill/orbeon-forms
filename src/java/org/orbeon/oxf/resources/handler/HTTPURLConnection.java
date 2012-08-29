@@ -248,14 +248,14 @@ public class HTTPURLConnection extends URLConnection {
             if (method == null)
                 setRequestMethod("GET");
 
-            // Set all headers,
+            // Set all headers
             final boolean skipAuthorizationHeader = userInfo != null || username != null;
             for (final Map.Entry<String, String[]> currentEntry: requestProperties.entrySet()) {
                 final String currentHeaderName = currentEntry.getKey();
                 final String[] currentHeaderValues = currentEntry.getValue();
                 for (final String currentHeaderValue: currentHeaderValues) {
                     // Skip over Authorization header if user authentication specified
-                    if (skipAuthorizationHeader && currentHeaderName.toLowerCase().equals(Connection.AUTHORIZATION_HEADER.toLowerCase()))
+                    if (skipAuthorizationHeader && currentHeaderName.toLowerCase().equals(Connection.AuthorizationHeader().toLowerCase()))
                         continue;
                     method.addHeader(currentHeaderName, currentHeaderValue);
                 }

@@ -25,7 +25,6 @@
             xmlns:xxi="http://orbeon.org/oxf/xml/xinclude"
             xmlns:ev="http://www.w3.org/2001/xml-events">
     <xhtml:head>
-        <xhtml:title>Form Builder Controls</xhtml:title>
         <xforms:model id="fr-form-model" xxforms:noscript-support="false" xxforms:xpath-analysis="true">
             <xforms:instance id="fr-form-instance">
                 <form>
@@ -142,7 +141,7 @@ additional terms may apply.&lt;br clear="none"/&gt;&lt;/div&gt;</htmlarea>
                     <xforms:bind id="email-bind" nodeset="email" type="xforms:email" name="email"/>
                     <xforms:bind id="boolean-bind" nodeset="boolean" type="xforms:boolean" name="boolean"/>
                     <xforms:bind id="dollars-bind" nodeset="dollars" type="xforms:decimal" name="dollars"/>
-                    <xforms:bind id="us-phone-bind" nodeset="us-phone" type="xforms:nonNegativeInteger"
+                    <xforms:bind id="us-phone-bind" nodeset="us-phone" constraint=". = '' or matches(., '^\d{10}$')"
                                  name="us-phone"/>
                     <xforms:bind id="us-state-bind" nodeset="us-state" type="xforms:string"
                                  name="us-state"/>
@@ -280,7 +279,7 @@ additional terms may apply.&lt;br clear="none"/&gt;&lt;/div&gt;</htmlarea>
                         </boolean>
                         <us-phone>
                             <label>US Phone Number</label>
-                            <hint>Custom US phone number field</hint>
+                            <hint>US phone number field</hint>
                             <help/>
                             <alert/>
                         </us-phone>
@@ -672,7 +671,7 @@ additional terms may apply.&lt;br clear="none"/&gt;&lt;/div&gt;</htmlarea>
                             <label>Password Field</label>
                             <hint>The password is 42 ;)</hint>
                             <help/>
-                            <alert/>
+                            <alert>Missing or incorrect password</alert>
                         </secret>
                         <inplace-input>
                             <label>In-place Input</label>
@@ -698,7 +697,7 @@ additional terms may apply.&lt;br clear="none"/&gt;&lt;/div&gt;</htmlarea>
                             <help/>
                         </selection-controls>
                         <other-controls>
-                            <label>Other Controls</label>
+                            <label>Buttons</label>
                             <help/>
                         </other-controls>
                         <attachment-controls>
@@ -1073,7 +1072,7 @@ additional terms may apply.&lt;br clear="none"/&gt;&lt;/div&gt;</htmlarea>
                             <label>Mot de passe</label>
                             <hint>Le mot de passe est 42 ;)</hint>
                             <help/>
-                            <alert/>
+                            <alert>Mot de passe manquant ou incorrect</alert>
                         </secret>
                         <inplace-input>
                             <label>Entrée en place</label>
@@ -1099,7 +1098,7 @@ additional terms may apply.&lt;br clear="none"/&gt;&lt;/div&gt;</htmlarea>
                             <help/>
                         </selection-controls>
                         <other-controls>
-                            <label>Autres contrôles</label>
+                            <label>Boutons</label>
                             <help/>
                         </other-controls>
                         <attachment-controls>
@@ -1142,7 +1141,6 @@ additional terms may apply.&lt;br clear="none"/&gt;&lt;/div&gt;</htmlarea>
     </xhtml:head>
     <xhtml:body>
         <fr:view>
-            <xforms:label ref="instance('fr-form-metadata')/title"/>
             <fr:body>
                 <fr:section id="text-controls-section" bind="text-controls-bind">
                     <xforms:label ref="$form-resources/text-controls/label"/>

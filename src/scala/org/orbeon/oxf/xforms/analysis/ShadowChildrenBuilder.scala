@@ -34,8 +34,13 @@ trait ShadowChildrenBuilder extends ChildrenBuilderTrait {
         def outerScope =
             if (innerScope.isTopLevelScope)
                 innerScope
-            else
-                component.staticStateContext.partAnalysis.getControlAnalysis(containerScope.fullPrefix.init).scope
+            else {
+                // Search in ancestor parts too
+                val controlId = containerScope.fullPrefix.init
+                val controlAnalysis = component.staticStateContext.partAnalysis.ancestorOrSelf map (_.getControlAnalysis(controlId)) filter (_ ne null) head
+
+                controlAnalysis.scope
+            }
 
         // Children elements have not been annotated earlier (because they are nested within the bound element)
         component.staticStateContext.partAnalysis.xblBindings.annotateSubtreeByElement(
@@ -52,8 +57,8 @@ trait ShadowChildrenBuilder extends ChildrenBuilderTrait {
     private def directlyNestedHandlers =
         if (binding.abstractBinding.modeHandlers)
             Dom4j.elements(component.element) filter
-                (EventHandlerImpl.isEventHandler(_)) map
-                    (annotateChild(_))
+                EventHandlerImpl.isEventHandler map
+                    annotateChild
         else
             Seq()
 
@@ -62,7 +67,7 @@ trait ShadowChildrenBuilder extends ChildrenBuilderTrait {
         if (binding.abstractBinding.modeLHHA)
             Dom4j.elements(component.element) filter
                 (e ⇒ LHHA.isLHHA(e) && (e.attribute(FOR_QNAME) eq null)) map
-                    (annotateChild(_))
+                    annotateChild
         else
             Seq()
     

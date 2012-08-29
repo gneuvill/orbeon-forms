@@ -20,6 +20,7 @@ import org.orbeon.oxf.fb.FormBuilderFunctions._
 import org.orbeon.oxf.fb.ControlOps._
 import org.orbeon.oxf.fb.GridOps._
 import org.orbeon.oxf.fb.ContainerOps._
+import org.orbeon.oxf.xml.TransformerUtils
 
 /*
  * Form Builder: toolbox operations.
@@ -66,15 +67,10 @@ object ToolboxOps {
                 // Adjust bindings on newly inserted control
                 renameControlByElement(newControlElement, newControlName)
 
-                // Get control type
-                // TODO: for now assume a literal 'xs:' prefix (should resolve namespace)
-                val controlType = binding \ "*:metadata" \ "*:datatype" match {
-                    case Seq(datatype, _*) ⇒ datatype.stringValue
-                    case _ ⇒ "xs:string"
-                }
+                val metadata = binding \ "*:metadata"
 
                 // Data holder may contain file attributes
-                val instanceTemplate = binding \ "*:metadata" \ "*:templates" \ "*:instance"
+                val instanceTemplate = metadata \ "*:templates" \ "*:instance"
                 val dataHolder =
                     if (! instanceTemplate.isEmpty)
                         elementInfo(newControlName, (instanceTemplate.head \@ @*) ++ (instanceTemplate \ *))
@@ -99,9 +95,8 @@ object ToolboxOps {
                 delete(newControlElement \@ "ref")
                 ensureAttribute(newControlElement, "bind", bind \@ "id" stringValue)
 
-                // Set bind type if needed
-                if (controlType != "xs:string")
-                    insert(into = bind, origin = attributeInfo("type", controlType))
+                // Set bind attributes if any
+                insert(into = bind, origin = bindAttributesTemplate(binding))
 
                 debugDumpDocument("insert new control", doc)
 
@@ -329,9 +324,8 @@ object ToolboxOps {
                 insert(after = Seq(model) ++ xbl, origin = binding parent * )
 
             // Insert template into section
-            val template = binding child (FB → "metadata") child (FB → "template") child *
-
-            insert(into = section, after = section \ *, origin = template)
+            viewTemplate(binding) foreach
+                (template ⇒ insert(into = section, after = section \ *, origin = template))
         }
 
     // Copy control to the clipboard

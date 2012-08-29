@@ -34,10 +34,8 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
 
-import javax.xml.transform.Source;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.sax.SAXSource;
-import java.net.MalformedURLException;
 import java.net.URL;
 
 /**
@@ -59,12 +57,12 @@ public class XFormsURIResolver extends TransformerURIResolver {
     }
 
     @Override
-    public Source resolve(String href, String base) throws TransformerException {
+    public SAXSource resolve(String href, String base) throws TransformerException {
         // Use global definition for headers to forward
         return resolve(href, base, null, Connection.getForwardHeaders());
     }
 
-    public Source resolve(String href, String base, final Connection.Credentials credentials, final String headersToForward) throws TransformerException {
+    public SAXSource resolve(String href, String base, final Connection.Credentials credentials, final String headersToForward) throws TransformerException {
 
         final String inputName = ProcessorImpl.getProcessorInputSchemeInputName(href);
         if (inputName != null) {
@@ -72,12 +70,7 @@ public class XFormsURIResolver extends TransformerURIResolver {
             return super.resolve(href, base);
         } else {
             // This is a regular URL
-            final URL url;
-            try {
-                url = URLFactory.createURL(base, href);
-            } catch (MalformedURLException e) {
-                throw new OXFException(e);
-            }
+            final URL url = URLFactory.createURL(base, href);
 
             final String protocol = url.getProtocol();
             final boolean isHttpProtocol = protocol.equals("http") || protocol.equals("https");

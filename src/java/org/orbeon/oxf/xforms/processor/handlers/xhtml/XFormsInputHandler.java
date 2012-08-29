@@ -79,12 +79,12 @@ public class XFormsInputHandler extends XFormsControlLifecyleHandler {
             if (!isStaticReadonly(inputControl)) {
                 // Output control
                 final boolean isMultiple = true;
-                final Itemset itemset = new Itemset();
+                final Itemset itemset = new Itemset(isMultiple);
                 // NOTE: We have decided that it did not make much sense to encrypt the value for boolean. This also poses
                 // a problem since the server does not send an itemset for new booleans, therefore the client cannot know
                 // the encrypted value of "true". So we do not encrypt values.
                 // NOTE: Put null label so that it is not output at all
-                itemset.addChildItem(new Item(isMultiple, false, null, null, "true"));
+                itemset.addChildItem(Item.apply(0, isMultiple, false, null, null, "true"));
 
                 // NOTE: In the future, we may want to use other appearances provided by xforms:select
     //            items.add(new XFormsSelect1Control.Item(false, Collections.EMPTY_LIST, "False", "false", 1));
@@ -181,8 +181,8 @@ public class XFormsInputHandler extends XFormsControlLifecyleHandler {
                             }
 
                             // Add attribute even if the control is not concrete
-                            if (placeHolderInfo != null && placeHolderInfo.placeholder != null)
-                                reusableAttributes.addAttribute("", "placeholder", "placeholder", ContentHandlerHelper.CDATA, placeHolderInfo.placeholder);
+                            if (placeHolderInfo != null && placeHolderInfo.placeholder() != null)
+                                reusableAttributes.addAttribute("", "placeholder", "placeholder", ContentHandlerHelper.CDATA, placeHolderInfo.placeholder());
 
                             reusableAttributes.addAttribute("", "class", "class", ContentHandlerHelper.CDATA, inputClasses.toString());
 
@@ -249,8 +249,7 @@ public class XFormsInputHandler extends XFormsControlLifecyleHandler {
                     } else {
                         // Read-only mode
                         if (isConcreteControl) {
-                            final String formattedValue = inputControl.getReadonlyValueUseFormat();
-                            final String outputValue = (formattedValue != null) ? formattedValue : inputControl.getExternalValue();
+                            final String outputValue = inputControl.getReadonlyValue();
 
                             contentHandler.startElement(XMLConstants.XHTML_NAMESPACE_URI, enclosingElementLocalname, enclosingElementQName, containerAttributes);
 
@@ -294,13 +293,13 @@ public class XFormsInputHandler extends XFormsControlLifecyleHandler {
 
     @Override
     protected void handleLabel() throws SAXException {
-        if (!(placeHolderInfo != null && placeHolderInfo.isLabelPlaceholder))
+        if (!(placeHolderInfo != null && placeHolderInfo.isLabelPlaceholder()))
             super.handleLabel();
     }
 
     @Override
     protected void handleHint() throws SAXException {
-        if (!(placeHolderInfo != null && placeHolderInfo.isHintPlaceholder))
+        if (!(placeHolderInfo != null && placeHolderInfo.isHintPlaceholder()))
             super.handleHint();
     }
 }

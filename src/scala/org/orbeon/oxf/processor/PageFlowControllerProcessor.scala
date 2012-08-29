@@ -21,7 +21,7 @@ import java.util.{List ⇒ JList, Map ⇒ JMap}
 import org.dom4j.{QName, Document, Element}
 import org.orbeon.errorified.Exceptions._
 import org.orbeon.oxf.pipeline.api.ExternalContext.Request
-import org.orbeon.oxf.pipeline.api.{XMLReceiver, PipelineContext}
+import org.orbeon.oxf.pipeline.api.{ExternalContext, XMLReceiver, PipelineContext}
 import org.orbeon.oxf.processor.PageFlowControllerProcessor.FileRoute
 import org.orbeon.oxf.processor.PageFlowControllerProcessor.PageFlow
 import org.orbeon.oxf.processor.PageFlowControllerProcessor.PageOrServiceRoute
@@ -88,7 +88,7 @@ class PageFlowControllerProcessor extends ProcessorImpl with Logging {
                 error("error caught", logParams)
                 externalContext.getResponse.setStatus(500)
                 error(OrbeonFormatter.format(t))
-                errorRoute.process(pipelineContext, request, MatchResult(matches = false))
+                errorRoute.process(pipelineContext, externalContext, MatchResult(matches = false))
             case None ⇒
                 // We don't have an error route so throw instead
                 throw t
@@ -107,8 +107,8 @@ class PageFlowControllerProcessor extends ProcessorImpl with Logging {
                 case Some(notFoundRoute) ⇒
                     // Run the not found route
                     externalContext.getResponse.setStatus(404)
-                    try notFoundRoute.process(pipelineContext, request, MatchResult(matches = false))
-                    catch { case t ⇒ runErrorRoute(t) }
+                    try notFoundRoute.process(pipelineContext, externalContext, MatchResult(matches = false))
+                    catch { case t: Throwable ⇒ runErrorRoute(t) }
                 case None ⇒
                     // We don't have a not found route so throw instead
                     runErrorRoute(t getOrElse new HttpStatusCodeException(404))
@@ -120,7 +120,7 @@ class PageFlowControllerProcessor extends ProcessorImpl with Logging {
                 // Run the unauthorized route
                 info("unauthorized", logParams)
                 externalContext.getResponse.setStatus(code)
-                unauthorizedRoute.process(pipelineContext, request, MatchResult(matches = false))
+                unauthorizedRoute.process(pipelineContext, externalContext, MatchResult(matches = false))
             case None ⇒
                 // We don't have an unauthorized route so throw instead
                 throw t
@@ -131,16 +131,16 @@ class PageFlowControllerProcessor extends ProcessorImpl with Logging {
             case Some((route: FileRoute, matchResult)) ⇒
                 // Run the given route and let the caller handle errors
                 debug("processing file", logParams)
-                route.process(pipelineContext, request, matchResult)
+                route.process(pipelineContext, externalContext, matchResult)
             case Some((route: PageOrServiceRoute, matchResult)) ⇒
                 debug("processing page/service", logParams)
                 // Run the given route and handle "not found" and error conditions
-                try route.process(pipelineContext, request, matchResult)
-                catch { case t ⇒
+                try route.process(pipelineContext, externalContext, matchResult)
+                catch { case t: Throwable ⇒
                     getRootThrowable(t) match {
                         case e: HttpRedirectException                            ⇒ externalContext.getResponse.sendRedirect(e.path, e.jParameters.orNull, e.serverSide, e.exitPortal)
                         case e: HttpStatusCodeException if Set(404)(e.code)      ⇒ runNotFoundRoute(Some(t))
-                        case e: HttpStatusCodeException if Set(401, 403)(e.code) ⇒ runUnauthorizedRoute(t ,e.code)
+                        case e: HttpStatusCodeException if Set(401, 403)(e.code) ⇒ runUnauthorizedRoute(t, e.code)
                         case e: ResourceNotFoundException                        ⇒ runNotFoundRoute(Some(t))
                         case e                                                   ⇒ runErrorRoute(t)
                     }
@@ -182,7 +182,7 @@ class PageFlowControllerProcessor extends ProcessorImpl with Logging {
 
         // NOTE: We support a null epilogue value and the pipeline then uses a plain HTML serializer
         val epilogueElement = configRoot.element("epilogue")
-        val epilogueURL     = Option(epilogueElement) flatMap (att(_, "url")) orElse controllerProperty(EpilogueProperty) get
+        val epilogueURL     = Option(epilogueElement) flatMap (att(_, "url")) orElse controllerProperty(EpilogueProperty)
 
         val topLevelElements = Dom4j.elements(configRoot)
 
@@ -258,7 +258,7 @@ class PageFlowControllerProcessor extends ProcessorImpl with Logging {
             stepProcessorContext: StepProcessorContext,
             urlBase: String,
             globalInstancePassing: String,
-            epilogueURL: String,
+            epilogueURL: Option[String],
             epilogueElement: Element,
             pageIdToPathInfo: JMap[String, String],
             pageIdToSetvaluesDocument: JMap[String, Document]) =
@@ -283,7 +283,7 @@ class PageFlowControllerProcessor extends ProcessorImpl with Logging {
             addStatement(new ASTChoose(new ASTHrefId(epilogueData)) {
                 addWhen(new ASTWhen("not(/*/@xsi:nil = 'true')") {
                     setNamespaces(PageFlowControllerBuilder.NAMESPACES_WITH_XSI_AND_XSLT)
-                    handleEpilogue(urlBase, getStatements, epilogueURL, epilogueElement,
+                    handleEpilogue(urlBase, getStatements, epilogueURL.orNull, epilogueElement,
                             epilogueData, epilogueModelData, epilogueInstance)
                 })
                 addWhen(new ASTWhen() {
@@ -345,7 +345,7 @@ object PageFlowControllerProcessor {
                 idAtt(e),
                 path,
                 compilePattern(e, path, defaultMatcher),
-                att(e, VisibilityProperty) map (isPublic(_)) getOrElse (e.getName == "page"), // public by default for pages
+                att(e, VisibilityProperty) map isPublic getOrElse (e.getName == "page"), // public by default for pages
                 att(e, "default-submission"),
                 att(e, "model"),
                 att(e, "view"),
@@ -357,26 +357,27 @@ object PageFlowControllerProcessor {
     lazy val MimeTypes = ResourceServer.readMimeTypeConfig
 
     // Routes
-    sealed trait Route { def routeElement: RouteElement; def process(pipelineContext: PipelineContext, request: Request, matchResult: MatchResult) }
+    sealed trait Route { def routeElement: RouteElement; def process(pipelineContext: PipelineContext, externalContext: ExternalContext, matchResult: MatchResult) }
 
     case class FileRoute(routeElement: FileElement) extends Route {
         // Serve a file by path
-        def process(pipelineContext: PipelineContext, request: Request, matchResult: MatchResult) =
-            if (request.getMethod == "GET")
-                ResourceServer.serveResource(MimeTypes, request.getRequestPath, routeElement.versioned)
+        def process(pipelineContext: PipelineContext, externalContext: ExternalContext, matchResult: MatchResult) =
+            if (externalContext.getRequest.getMethod == "GET")
+                ResourceServer.serveResource(MimeTypes, externalContext.getRequest.getRequestPath, routeElement.versioned)
             else
                 unauthorized()
     }
 
-    case class PageOrServiceRoute(routeElement: PageOrServiceElement, compile: PageOrServiceElement ⇒ PipelineConfig) extends Route {
+    case class PageOrServiceRoute(routeElement: PageOrServiceElement, compile: PageOrServiceElement ⇒ PipelineConfig) extends Route with Authorization {
 
         // Compile pipeline lazily
         lazy val pipelineConfig = compile(routeElement)
 
         // Run a page
-        def process(pipelineContext: PipelineContext, request: Request, matchResult: MatchResult) = {
+        def process(pipelineContext: PipelineContext, externalContext: ExternalContext, matchResult: MatchResult) = {
 
-            //checkAccess(request)
+            // Make sure the request is authorized
+            checkAccess(externalContext)
 
             // PipelineConfig is reusable, but PipelineProcessor is not
             val pipeline = new PipelineProcessor(pipelineConfig)
@@ -392,18 +393,30 @@ object PageFlowControllerProcessor {
             pipeline.reset(pipelineContext)
             pipeline.start(pipelineContext)
         }
+    }
 
-        def checkAccess(request: Request) =
-            if (! routeElement.public && ! authorizedRequest(request))
+    trait Authorization {
+
+        self: PageOrServiceRoute ⇒
+
+        val TokenKey = "orbeon-token"
+
+        def checkAccess(externalContext: ExternalContext) =
+            if (! routeElement.public && ! authorizedRequest(externalContext))
                 unauthorized()
 
-        def authorizedRequest(request: Request) =
-            token(request) exists authorizedToken
+        def authorizedRequest(externalContext: ExternalContext) = {
+            val token = requestToken(externalContext.getRequest)
 
-        def token(request: Request) =
-            (Option(request.getHeaderValuesMap.get("orbeon-token")) flatten) headOption
+            token.isDefined && token == applicationToken(externalContext)
+        }
 
-        def authorizedToken(token: String) = false // TODO
+        def requestToken(request: Request) =
+            (Option(request.getHeaderValuesMap.get(TokenKey)) flatten) headOption
+
+        def applicationToken(externalContext: ExternalContext) =
+            externalContext.getWebAppContext.attributes.get(TokenKey) collect
+            { case token: String ⇒ token }
     }
 
     def unauthorized() = throw new HttpStatusCodeException(403)
@@ -418,6 +431,7 @@ object PageFlowControllerProcessor {
 
     def att(e: Element, name: String) = Option(e.attributeValue(name))
     def idAtt(e: Element) = att(e, "id")
+
     // @path-info for backward compatibility
     def getPath(e: Element) = att(e, "path") orElse att(e, "path-info") ensuring (_.isDefined) get
 
@@ -440,7 +454,7 @@ class DigestedProcessor(content: XMLReceiver ⇒ Unit) extends ProcessorImpl {
             def fillOutState(pipelineContext: PipelineContext, digestState: DigestState) = true
 
             def computeDigest(pipelineContext: PipelineContext, digestState: DigestState) = {
-                val digester = new DigestContentHandler("MD5")
+                val digester = new DigestContentHandler
                 content(digester)
                 digester.getResult
             }

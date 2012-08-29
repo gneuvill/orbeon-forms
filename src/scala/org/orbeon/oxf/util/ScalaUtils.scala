@@ -15,15 +15,16 @@ package org.orbeon.oxf.util
 
 import org.orbeon.errorified.Exceptions
 import org.orbeon.exception._
-import java.security.MessageDigest
 import org.apache.log4j.Logger
 import java.net.URLEncoder.{encode ⇒ encodeURL}
 import java.net.URLDecoder.{decode ⇒ decodeURL}
-import org.apache.commons.lang.StringUtils.{isNotBlank, trimToEmpty}
+import org.apache.commons.lang3.StringUtils.{isNotBlank, trimToEmpty}
+import scala.collection.mutable
+import scala.collection.generic.CanBuildFrom
 
 object ScalaUtils {
 
-    private val COPY_BUFFER_SIZE = 8192
+    private val CopyBufferSize = 8192
 
     type Readable[T] = {
         def close()
@@ -44,7 +45,7 @@ object ScalaUtils {
 
         useAndClose(in) { in ⇒
             useAndClose(out) { out ⇒
-                val buffer = new Array[T](COPY_BUFFER_SIZE)
+                val buffer = new Array[T](CopyBufferSize)
                 Iterator continually (in read buffer) takeWhile (_ != -1) filter (_ > 0) foreach { read ⇒
                     progress(read)
                     out.write(buffer, 0, read)
@@ -60,7 +61,7 @@ object ScalaUtils {
 
         useAndClose(in) { in ⇒
             useAndClose(out) { out ⇒
-                val buffer = new Array[Byte](COPY_BUFFER_SIZE)
+                val buffer = new Array[Byte](CopyBufferSize)
                 Iterator continually (in read buffer) takeWhile (_ != -1) filter (_ > 0) foreach { read ⇒
                     progress(read)
                     out.write(buffer, 0, read)
@@ -76,7 +77,7 @@ object ScalaUtils {
 
         useAndClose(in) { in ⇒
             useAndClose(out) { out ⇒
-                val buffer = new Array[Char](COPY_BUFFER_SIZE)
+                val buffer = new Array[Char](CopyBufferSize)
                 Iterator continually (in read buffer) takeWhile (_ != -1) filter (_ > 0) foreach { read ⇒
                     progress(read)
                     out.write(buffer, 0, read)
@@ -97,7 +98,7 @@ object ScalaUtils {
     def runQuietly(block: ⇒ Unit) =
         try block
         catch {
-            case _ ⇒ // NOP
+            case _: Throwable ⇒ // NOP
         }
 
     // Run the body and log/rethrow the root cause of any Exception caught
@@ -109,20 +110,14 @@ object ScalaUtils {
                 throw newException(Exceptions.getRootThrowable(e))
         }
 
-    def digest(algorithm: String, data: Traversable[String]) = {
-        // Create and update digest
-        val messageDigest = MessageDigest.getInstance(algorithm)
-        data foreach (s ⇒ messageDigest.update(s.getBytes("utf-8")))
-
-        // Format result
-        SecureUtils.byteArrayToHex(messageDigest.digest())
-    }
-
     def dropTrailingSlash(s: String) = if (s.size == 0 || s.last != '/') s else s.init
     def dropStartingSlash(s: String) = if (s.size == 0 || s.head != '/') s else s.tail
-    def capitalizeHeader(s: String) = s split '-' map (_.capitalize) mkString "-"
+    def appendStartingSlash(s: String) = if (s.size != 0 && s.head == '/') s else '/' + s
 
-    // Shortcut for "not implemented yet" (something like this is planned for Scala post-2.9.1)
+    def capitalizeHeader(s: String) =
+        if (s equalsIgnoreCase "SOAPAction") "SOAPAction" else s split '-' map (_.capitalize) mkString "-"
+
+    // Shortcut for "not implemented yet" (something like this is in Scala 2.10)
     def ??? = throw new RuntimeException("NIY")
 
     // Semi-standard pipe operator
@@ -170,6 +165,19 @@ object ScalaUtils {
     // Encode a sequence of pairs to a query string
     def encodeSimpleQuery(parameters: Seq[(String, String)]): String =
         parameters map { case (name, value) ⇒ encodeURL(name, "utf-8") + '=' + encodeURL(value, "utf-8") } mkString "&"
+
+    // Combine the second values of each tuple that have the same name
+    // The caller can specify the type of the resulting values, e.g.:
+    // - combineValues[AnyRef, Array]
+    // - combineValues[String, List]
+    def combineValues[U >: String, T[_]](parameters: Seq[(String, String)])(implicit cbf: CanBuildFrom[T[U], U, T[U]]): Seq[(String, T[U])] = {
+        val result = mutable.LinkedHashMap[String, mutable.Builder[String, T[U]]]()
+
+        for ((name, value) ← parameters)
+            result.getOrElseUpdate(name, cbf()) += value
+
+        result map { case (k, v) ⇒ k → v.result } toList
+    }
 
     // If the string is null or empty, return none, otherwise return the trimmed value
     def nonEmptyOrNone(s: String) = Option(s) map trimToEmpty filter isNotBlank

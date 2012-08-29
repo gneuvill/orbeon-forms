@@ -20,19 +20,19 @@ import scala.collection.JavaConverters._
 import org.orbeon.oxf.common.OXFException
 import org.orbeon.oxf.util.ScalaUtils._
 import org.orbeon.saxon.om.{Item, NodeInfo}
-import org.orbeon.oxf.pipeline.InitUtils
 import org.orbeon.oxf.xforms.function.xxforms.{XXFormsProperty, XXFormsPropertiesStartsWith}
 import java.util.{Map ⇒ JMap, List ⇒ JList}
 import org.orbeon.oxf.xforms.control.controls.XFormsUploadControl
-import org.orbeon.oxf.xforms.function.Random
 import org.orbeon.oxf.util.{SecureUtils, NetUtils, XPathCache}
-import org.apache.commons.lang.StringUtils
+import org.apache.commons.lang3.StringUtils
 import org.orbeon.oxf.pipeline.api.ExternalContext.Request
+import org.orbeon.oxf.xforms.XFormsConstants._
 import org.orbeon.oxf.webapp.HttpStatusCodeException
 
 object FormRunner {
 
     val NS = "http://orbeon.org/oxf/xml/form-runner"
+    val XF = XFORMS_NAMESPACE_URI
 
     val propertyPrefix = "oxf.fr.authentication."
 
@@ -102,7 +102,7 @@ object FormRunner {
                 }
 
                 val username = headerOption(headerUsernamePropertyName) map (_.head)
-                val roles = headerOption(headerRolesPropertyName) map (_ flatMap (split1(_)) flatMap (split2(_)))
+                val roles = headerOption(headerRolesPropertyName) map (_ flatMap split1 flatMap (split2(_)))
 
                 (username, roles)
 
@@ -182,21 +182,24 @@ object FormRunner {
      * Given the metadata for a form, returns the sequence of operations that the current user is authorized to perform.
      * The sequence can contain just the "*" string to denote that the user is allowed to perform any operation.
      */
-    def authorizedOperationsOnForm(metadata: NodeInfo): java.util.List[String] = {
+    def authorizedOperationsOnForm(permissionsElement: NodeInfo): java.util.List[String] = {
         val request = NetUtils.getExternalContext.getRequest
-        (metadata \ "permissions" match {
-            case Seq() ⇒ Seq("*")                                                      // No permissions defined for this form, authorize any operation
-            case ps ⇒ ( ps \ "permission"
+
+        val permissions =
+            if (permissionsElement eq null)
+                Seq("*")                                                                // No permissions defined for this form, authorize any operation
+            else
+                (permissionsElement \ "permission"
                     filter (p ⇒
                         (p \ * isEmpty) ||                                              // No constraint on the permission, so it is automatically satisfied
                         (p \ "user-role" forall (r ⇒                                   // If we have user-role constraints, they must all pass
                             (r \@ "any-of" stringValue) split "\\s+"                    // Constraint is satisfied if user has at least one of the roles
                             map (_.replace("%20", " "))                                 // Unescape internal spaces as the roles used in Liferay are user-facing labels that can contain space (see also permissions.xbl)
-                            exists (request.isUserInRole(_)))))
+                            exists request.isUserInRole)))
                     flatMap (p ⇒ (p \@ "operations" stringValue) split "\\s+")         // For the permissions that passed, return the list operations
-                    distinct                                                            // Remove duplicate operations
-                )
-        }) asJava
+                    distinct)                                                           // Remove duplicate operations
+
+        permissions.asJava
     }
 
     def getFormBuilderPermissionsAsXML(formRunnerRoles: NodeInfo): NodeInfo = {
@@ -313,8 +316,7 @@ object FormRunner {
         //val nonTrustedFilename = XFormsUploadControl.getParameter(localURL, "filename")
         //val nonTrustedMediatype = XFormsUploadControl.getParameter(localURL, "mediatype")
 
-        val randomHex = SecureUtils.digestString(Random.evaluate(true).toString, "MD5", "hex")
-        createFormDataAttachmentPath(app, form, document, randomHex + ".bin")
+        createFormDataAttachmentPath(app, form, document, SecureUtils.randomHexId + ".bin")
     }
 
     // Path for a form definition attachment
@@ -392,6 +394,17 @@ object FormRunner {
             fromSession orElse
             Option(getDefaultLang(app, form))
     }
+
+    // Get a field's label for the summary page
+    def summaryLanguage(name: String, resources: NodeInfo, inlineLabel: String): String = {
+        def resourceLabelOpt = resources \ name \ "label" map (_.getStringValue) headOption
+        def inlineLabelOpt   = nonEmptyOrNone(inlineLabel)
+
+        resourceLabelOpt orElse inlineLabelOpt getOrElse '[' + name + ']'
+    }
+
+    // Append a query string to a URL
+    def appendQueryString(urlString: String, queryString: String) = NetUtils.appendQueryString(urlString, queryString)
 
     private def selectLang(app: String, form: String, requestedLang: Option[String], availableLangs: List[String]) = {
         def matchingLanguage = availableLangs intersect requestedLang.toList headOption

@@ -13,7 +13,7 @@
  */
 package org.orbeon.oxf.xforms
 
-import org.apache.commons.pool.PoolableObjectFactory
+import org.apache.commons.pool.BasePoolableObjectFactory
 import org.orbeon.oxf.util._
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -31,9 +31,9 @@ object XFormsCompressor {
     private val TRAILER_SIZE = 8
 
     def compressBytes(bytesToEncode: Array[Byte], level: Int) = {
-        val deflater = deflaterPool.borrowObject.asInstanceOf[Deflater]
-        deflater.setLevel(level)
+        val deflater = deflaterPool.borrowObject
         try {
+            deflater.setLevel(level)
             val os = new ByteArrayOutputStream
             val gzipOS = new DeflaterGZIPOutputStream(deflater, os, BUFFER_SIZE)
             gzipOS.write(bytesToEncode)
@@ -94,7 +94,7 @@ object XFormsCompressor {
         os.toByteArray
     }
 
-    private class DeflaterPoolableObjectFactory extends PoolableObjectFactory {
+    private class DeflaterPoolableObjectFactory extends BasePoolableObjectFactory[Deflater] {
 
         def makeObject = {
             XFormsUtils.indentedLogger.logDebug("compressor", "creating new Deflater")
@@ -102,16 +102,11 @@ object XFormsCompressor {
             new Deflater(Deflater.BEST_SPEED, true)
         }
 
-        def destroyObject(o: AnyRef) = ()
-        def validateObject(o: AnyRef) = true
-        def activateObject(o: AnyRef) = ()
-        def passivateObject(o: AnyRef) {
-            try {
-                o.asInstanceOf[Deflater].reset()
-            } catch {
+        override def passivateObject(o: Deflater): Unit =
+            try o.reset()
+            catch {
                 case e ⇒ XFormsUtils.indentedLogger.logError("compressor", "exception while passivating Deflater", e)
             }
-        }
     }
 
     // GZIPOutputStream which uses a custom Deflater

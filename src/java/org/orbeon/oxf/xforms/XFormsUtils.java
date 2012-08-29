@@ -13,7 +13,7 @@
  */
 package org.orbeon.oxf.xforms;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.ccil.cowan.tagsoup.HTMLSchema;
 import org.dom4j.*;
 import org.dom4j.io.DocumentSource;
@@ -66,17 +66,17 @@ public class XFormsUtils {
 
     public static String encodeXMLAsDOM(org.w3c.dom.Node node) {
         try {
-            return encodeXML(TransformerUtils.domToDom4jDocument(node), XFormsProperties.isGZIPState(), XFormsProperties.getXFormsPassword(), false);
+            return encodeXML(TransformerUtils.domToDom4jDocument(node), XFormsProperties.isGZIPState(), true, false);
         } catch (TransformerException e) {
             throw new OXFException(e);
         }
     }
 
     public static String encodeXML(Document documentToEncode, boolean encodeLocationData) {
-        return encodeXML(documentToEncode, XFormsProperties.isGZIPState(), XFormsProperties.getXFormsPassword(), encodeLocationData);
+        return encodeXML(documentToEncode, XFormsProperties.isGZIPState(), true, encodeLocationData);
     }
 
-    public static String encodeXML(Document document, boolean compress, String encryptionPassword, boolean location) {
+    public static String encodeXML(Document document, boolean compress, boolean encrypt, boolean location) {
         //        XFormsServer.logger.debug("XForms - encoding XML.");
 
         // Get SAXStore
@@ -98,22 +98,22 @@ public class XFormsUtils {
         }
 
         // Encode bytes
-        return encodeBytes(bytes, compress, encryptionPassword);
+        return encodeBytes(bytes, compress, encrypt);
     }
 
-    public static String encodeBytes(byte[] bytesToEncode, boolean compress, String encryptionPassword) {
+    public static String encodeBytes(byte[] bytesToEncode, boolean compress, boolean encrypt) {
         // Compress if needed
         final byte[] gzipByteArray = compress ? XFormsCompressor.compressBytes(bytesToEncode) : null;
 
         // Encrypt if needed
-        if (encryptionPassword != null) {
+        if (encrypt) {
             // Perform encryption
             if (gzipByteArray == null) {
                 // The data was not compressed above
-                return "X1" + SecureUtils.encrypt(encryptionPassword, bytesToEncode);
+                return "X1" + SecureUtils.encrypt(bytesToEncode);
             } else {
                 // The data was compressed above
-                return "X2" + SecureUtils.encrypt(encryptionPassword, gzipByteArray);
+                return "X2" + SecureUtils.encrypt(gzipByteArray);
             }
         } else {
             // No encryption
@@ -379,34 +379,13 @@ public class XFormsUtils {
     /**
      * Compare two objects, handling null values as well.
      *
+     * TODO: This should go, Scala does this natively.
+     *
      * @param value1    first value or null
      * @param value2    second value or null
      * @return          whether the values are identical or both null
      */
     public static boolean compareStrings(Object value1, Object value2) {
-        return (value1 == null && value2 == null) || (value1 != null && value2 != null && value1.equals(value2));
-    }
-
-    /**
-     * Compare two collections, handling null values as well.
-     *
-     * @param value1    first value or null
-     * @param value2    second value or null
-     * @return          whether the values are identical or both null
-     */
-    public static boolean compareCollections(Collection value1, Collection value2) {
-        // Add quick check on size, which AbstractList e.g. doesn't do
-        return (value1 == null && value2 == null) || (value1 != null && value2 != null && value1.size() == value2.size() && value1.equals(value2));
-    }
-
-    /**
-     * Compare two maps, handling null values as well.
-     *
-     * @param value1    first value or null
-     * @param value2    second value or null
-     * @return          whether the values are identical or both null
-     */
-    public static boolean compareMaps(Map value1, Map value2) {
         return (value1 == null && value2 == null) || (value1 != null && value2 != null && value1.equals(value2));
     }
 
@@ -442,12 +421,8 @@ public class XFormsUtils {
     }
 
     public static Document decodeXML(String encodedXML) {
-        return decodeXML(encodedXML, XFormsProperties.getXFormsPassword());
-    }
 
-    public static Document decodeXML(String encodedXML, String encryptionPassword) {
-
-        final byte[] bytes = decodeBytes(encodedXML, encryptionPassword);
+        final byte[] bytes = decodeBytes(encodedXML);
 
         // Deserialize bytes to SAXStore
         // TODO: This is not optimal
@@ -472,7 +447,7 @@ public class XFormsUtils {
         return result.getDocument();
     }
 
-    public static byte[] decodeBytes(String encoded, String encryptionPassword) {
+    public static byte[] decodeBytes(String encoded) {
         // Get raw text
         byte[] resultBytes;
         {
@@ -483,12 +458,12 @@ public class XFormsUtils {
             final byte[] gzipByteArray;
             if (prefix.equals("X1")) {
                 // Encryption + uncompressed
-                resultBytes1 = SecureUtils.decrypt(encryptionPassword, encodedString);
+                resultBytes1 = SecureUtils.decrypt(encodedString);
                 gzipByteArray = null;
             } else if (prefix.equals("X2")) {
                 // Encryption + compressed
                 resultBytes1 = null;
-                gzipByteArray = SecureUtils.decrypt(encryptionPassword, encodedString);
+                gzipByteArray = SecureUtils.decrypt(encodedString);
             } else if (prefix.equals("X3")) {
                 // No encryption + uncompressed
                 resultBytes1 = Base64.decode(encodedString);

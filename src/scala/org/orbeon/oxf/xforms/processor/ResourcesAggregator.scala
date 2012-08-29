@@ -27,7 +27,7 @@ import org.orbeon.oxf.processor._
 import collection.mutable.{Buffer, LinkedHashSet}
 import org.orbeon.oxf.xforms._
 import org.dom4j.QName
-import org.apache.commons.lang.StringUtils
+import org.apache.commons.lang3.StringUtils
 import ResourcesAggregator._
 import org.orbeon.oxf.externalcontext.URLRewriter
 
@@ -152,7 +152,7 @@ class ResourcesAggregator extends ProcessorImpl {
 
                             def outputPreservedElement(e: HeadElement) = {
                                 helper.startElement(xhtmlPrefix, XMLConstants.XHTML_NAMESPACE_URI, e.name, e.attributes)
-                                e.text foreach (helper.text(_))
+                                e.text foreach helper.text
                                 helper.endElement()
                             }
                             
@@ -203,14 +203,14 @@ class ResourcesAggregator extends ProcessorImpl {
                                 val outputCSSElement = outputElement(resource ⇒ Array("rel", "stylesheet", "href", resource, "type", "text/css", "media", "all"), "link") _
                                 aggregate(baselineCSS, outputCSSElement, isCacheCombinedResources, isCSS = true)
                                 aggregate(supplementalCSS -- baselineCSS, outputCSSElement, isCacheCombinedResources, isCSS = true)
-                                preservedCSS foreach (outputPreservedElement(_))
+                                preservedCSS foreach outputPreservedElement
                             }
 
                             def outputJS() = {
                                 val outputJSElement = outputElement(resource ⇒ Array("type", "text/javascript", "src", resource), "script") _
                                 aggregate(baselineJS -- asyncPortletLoadScripts, outputJSElement, isCacheCombinedResources, isCSS = false)
                                 aggregate(supplementalJS -- baselineJS -- asyncPortletLoadScripts, outputJSElement, isCacheCombinedResources, isCSS = false)
-                                preservedJS foreach (outputPreservedElement(_))
+                                preservedJS foreach outputPreservedElement
                             }
 
                             if (level == 2 && localname == "head") {
@@ -281,7 +281,7 @@ object ResourcesAggregator {
 
             // All resource paths are hashed
             val itemsToHash = resources ++ (if (hasAppResource && StringUtils.isNotBlank(appVersion)) Set(appVersion) else Set())
-            val resourcesHash = ScalaUtils.digest("SHA-1", Seq(itemsToHash mkString "|"))
+            val resourcesHash = SecureUtils.digestString(itemsToHash mkString "|", "hex")
 
             // Cache mapping so that resource can be served by oxf:resource-server
             Caches.resourcesCache.put(new EhElement(resourcesHash, resources.toArray)) // use Array which is serializable and usable from Java

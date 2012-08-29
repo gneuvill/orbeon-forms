@@ -16,6 +16,7 @@ package org.orbeon.oxf.xforms.state
 import org.orbeon.oxf.pipeline.api.ExternalContext
 import net.sf.ehcache.{Element ⇒ EhElement }
 import org.orbeon.oxf.xforms._
+import org.orbeon.oxf.util.SecureUtils
 
 /**
  * XForms state cache based on Ehcache.
@@ -64,13 +65,13 @@ object EhcacheStateStore extends XFormsStateStore {
                 val parts = keyString split ':'
 
                 assert(parts.size == 2)
-                assert(parts(0).length == XFormsStaticStateImpl.DIGEST_LENGTH)   // static state key is an hex MD5
+                assert(parts(0).length == SecureUtils.HexIdLength)   // static state key is an hex hash
 
                 // If isInitialState == true, force finding the initial state. Otherwise, use current state stored in mapping.
                 val dynamicStateKey = if (isInitialState) getDynamicStateKey(documentUUID, true) else parts(1)
 
                 // Gather values from cache for both keys and return state only if both are non-null
-                Stream(parts(0), dynamicStateKey) map (findOne(_)) filter (_ ne null) match {
+                Stream(parts(0), dynamicStateKey) map findOne filter (_ ne null) match {
                     case Stream(staticState: String, dynamicState: DynamicState) ⇒
                         XFormsState(Some(parts(0)), staticState, dynamicState)
                     case _ ⇒ null

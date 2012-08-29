@@ -23,16 +23,15 @@
       xmlns:fb="http://orbeon.org/oxf/xml/form-builder"
       xmlns:saxon="http://saxon.sf.net/"
       xmlns:xbl="http://www.w3.org/ns/xbl"
+      xmlns:secure="java:org.orbeon.oxf.util.SecureUtils"
       xmlns:controlOps="java:org.orbeon.oxf.fb.ControlOps"
       xmlns:xformsUtils="java:org.orbeon.oxf.xforms.XFormsUtils">
     <xh:head>
-        <xh:title>Orbeon Form Builder</xh:title>
         <!-- CSS -->
         <xh:link rel="stylesheet" type="text/css" href="/ops/yui/assets/skins/sam/resize.css"/>
         <xh:link rel="stylesheet" type="text/css" href="/ops/yui/assets/skins/sam/layout.css"/>
         <xh:link rel="stylesheet" href="/forms/orbeon/builder/resources/form-builder.css" type="text/css"/>
 
-        <xh:script type="text/javascript" src="/ops/jquery/jquery-1.7.1.min.js"/>
         <xh:script type="text/javascript" src="/forms/orbeon/builder/resources/accordion-menu-v2.js"/>
         <xh:script type="text/javascript" src="/forms/orbeon/builder/resources/grid/events.js"/>
         <xh:script type="text/javascript" src="/forms/orbeon/builder/resources/grid/action-icons.js"/>
@@ -172,6 +171,8 @@
                             <xf:action ev:event="DOMActivate">
                                 <!-- Open the dialog in "save-as" mode -->
                                 <xf:dispatch name="fb-show-dialog" targetid="dialog-form-settings">
+                                    <xxf:context name="title" value="xxf:bind('title-bind')"/>
+                                    <xxf:context name="description" value="xxf:bind('description-bind')"/>
                                     <xxf:context name="mode" value="'save-as'"/>
                                 </xf:dispatch>
                             </xf:action>
@@ -213,6 +214,8 @@
                                 <xf:dispatch name="fb-show-dialog" targetid="dialog-form-settings">
                                     <xxf:context name="app" value="xxf:bind('application-name-bind')"/>
                                     <xxf:context name="form" value="xxf:bind('form-name-bind')"/>
+                                    <xxf:context name="title" value="xxf:bind('title-bind')"/>
+                                    <xxf:context name="description" value="xxf:bind('description-bind')"/>
                                     <xxf:context name="mode" value="'edit'"/>
                                 </xf:dispatch>
                             </xf:action>
@@ -309,36 +312,38 @@
 
                         <xxf:var name="dialogs-closed" value="instance('fb-variables')/dialogs-open = 0"/>
 
+                        <!-- Disable keyboard shortcuts until we can polish them, see #387 and #233 -->
+
                         <!-- Cut/copy/paste shortcuts -->
-                        <xf:dispatch if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="control" xxf:text="x" name="DOMActivate" targetid="cut-trigger"/>
-                        <xf:dispatch if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="control" xxf:text="c" name="DOMActivate" targetid="copy-trigger"/>
-                        <xf:dispatch if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="control" xxf:text="v" name="DOMActivate" targetid="paste-trigger"/>
+                        <!--<xf:dispatch if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="control" xxf:text="x" name="DOMActivate" targetid="cut-trigger"/>-->
+                        <!--<xf:dispatch if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="control" xxf:text="c" name="DOMActivate" targetid="copy-trigger"/>-->
+                        <!--<xf:dispatch if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="control" xxf:text="v" name="DOMActivate" targetid="paste-trigger"/>-->
 
                         <!-- Buttons shortcuts -->
-                        <xf:dispatch if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="control" xxf:text="w" name="DOMActivate" targetid="fr-back-button"/>
-                        <xf:dispatch if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="control" xxf:text="t" name="DOMActivate" targetid="fb-test-button"/>
-                        <xf:dispatch if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="control" xxf:text="p" name="DOMActivate" targetid="fb-publish-button"/>
-                        <xf:dispatch if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="control" xxf:text="s" name="DOMActivate" targetid="fr-save-button"/>
-                        <xf:dispatch if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="control shift" xxf:text="s" name="DOMActivate" targetid="fr-save-as-button"/>
+                        <!--<xf:dispatch if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="control" xxf:text="w" name="DOMActivate" targetid="fr-back-button"/>-->
+                        <!--<xf:dispatch if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="control" xxf:text="t" name="DOMActivate" targetid="fb-test-button"/>-->
+                        <!--<xf:dispatch if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="control" xxf:text="p" name="DOMActivate" targetid="fb-publish-button"/>-->
+                        <!--<xf:dispatch if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="control" xxf:text="s" name="DOMActivate" targetid="fr-save-button"/>-->
+                        <!--<xf:dispatch if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="control shift" xxf:text="s" name="DOMActivate" targetid="fr-save-as-button"/>-->
 
                         <!-- Open dialogs shortcuts -->
-                        <xxf:show if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="alt" xxf:text="e" dialog="fb-source-editor-dialog"/>
-                        <xf:dispatch if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="alt" xxf:text="i" name="DOMActivate" targetid="fb-edit-details-trigger"/>
-                        <xf:dispatch if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="alt" xxf:text="v" name="DOMActivate" targetid="fb-edit-validation-trigger"/>
+                        <!--<xxf:show if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="alt" xxf:text="e" dialog="fb-source-editor-dialog"/>-->
+                        <!--<xf:dispatch if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="alt" xxf:text="i" name="DOMActivate" targetid="fb-edit-details-trigger"/>-->
+                        <!--<xf:dispatch if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="alt" xxf:text="v" name="DOMActivate" targetid="fb-edit-validation-trigger"/>-->
 
                         <!-- Move section -->
-                        <xf:action ev:observer="#document" ev:event="keypress" xxf:modifiers="control alt" xxf:text="&#39;" type="xpath" xmlns:sectionOps="java:org.orbeon.oxf.fb.SectionOps">
-                            sectionOps:moveSectionRight($current-td/ancestor::*:section[1])
-                        </xf:action>
-                        <xf:action ev:observer="#document" ev:event="keypress" xxf:modifiers="control alt" xxf:text="&#37;" type="xpath" xmlns:sectionOps="java:org.orbeon.oxf.fb.SectionOps">
-                            sectionOps:moveSectionLeft($current-td/ancestor::*:section[1])
-                        </xf:action>
-                        <xf:action ev:observer="#document" ev:event="keypress" xxf:modifiers="control alt" xxf:text="&#38;" type="xpath" xmlns:sectionOps="java:org.orbeon.oxf.fb.SectionOps">
-                            sectionOps:moveSectionUp($current-td/ancestor::*:section[1])
-                        </xf:action>
-                        <xf:action ev:observer="#document" ev:event="keypress" xxf:modifiers="control alt" xxf:text="&#40;" type="xpath" xmlns:sectionOps="java:org.orbeon.oxf.fb.SectionOps">
-                            sectionOps:moveSectionDown($current-td/ancestor::*:section[1])
-                        </xf:action>
+                        <!--<xf:action ev:observer="#document" ev:event="keypress" xxf:modifiers="control alt" xxf:text="&#39;" type="xpath" xmlns:sectionOps="java:org.orbeon.oxf.fb.SectionOps">-->
+                            <!--sectionOps:moveSectionRight($current-td/ancestor::*:section[1])-->
+                        <!--</xf:action>-->
+                        <!--<xf:action ev:observer="#document" ev:event="keypress" xxf:modifiers="control alt" xxf:text="&#37;" type="xpath" xmlns:sectionOps="java:org.orbeon.oxf.fb.SectionOps">-->
+                            <!--sectionOps:moveSectionLeft($current-td/ancestor::*:section[1])-->
+                        <!--</xf:action>-->
+                        <!--<xf:action ev:observer="#document" ev:event="keypress" xxf:modifiers="control alt" xxf:text="&#38;" type="xpath" xmlns:sectionOps="java:org.orbeon.oxf.fb.SectionOps">-->
+                            <!--sectionOps:moveSectionUp($current-td/ancestor::*:section[1])-->
+                        <!--</xf:action>-->
+                        <!--<xf:action ev:observer="#document" ev:event="keypress" xxf:modifiers="control alt" xxf:text="&#40;" type="xpath" xmlns:sectionOps="java:org.orbeon.oxf.fb.SectionOps">-->
+                            <!--sectionOps:moveSectionDown($current-td/ancestor::*:section[1])-->
+                        <!--</xf:action>-->
 
                         <!-- Insert controls shortcuts -->
                         <!--<xf:dispatch if="$dialogs-closed" ev:observer="#document" ev:event="keypress" xxf:modifiers="Control" xxf:text="n" name="DOMActivate" targetid="insert-new-section-trigger"/>-->
@@ -389,13 +394,19 @@
 
                             <!-- Form settings dialog -->
                             <fb:dialog-form-settings id="dialog-form-settings" resources-ref="$form-resources" fr-resources-ref="$fr-resources" body-ref="$body">
+                                <!-- Update title/description -->
+                                <xf:action ev:event="fb-update-metadata">
+                                    <xf:setvalue ref="xxf:bind('title-bind')"       value="event('title')"/>
+                                    <xf:setvalue ref="xxf:bind('description-bind')" value="event('description')"/>
+                                </xf:action>
                                 <!-- Update app/form name if changed -->
                                 <xf:action
                                         ev:event="fb-update-metadata"
                                         if="xxf:bind('application-name-bind') != event('app') or xxf:bind('form-name-bind') != event('form')">
+
                                     <!-- Copy data to main instance -->
                                     <xf:setvalue ref="xxf:bind('application-name-bind')" value="event('app')"/>
-                                    <xf:setvalue ref="xxf:bind('form-name-bind')" value="event('form')"/>
+                                    <xf:setvalue ref="xxf:bind('form-name-bind')"        value="event('form')"/>
                                     <!-- Refresh components -->
                                     <!-- De-annotate the form, as it will be re-annotated once the toolbox is loaded -->
                                     <xf:dispatch targetid="fr-form-model" name="fr-data-save-prepare"/>
@@ -408,7 +419,7 @@
                                         ev:event="fb-update-metadata"
                                         if="event('mode') = 'save-as'">
                                     <!-- Create new document id -->
-                                    <xf:setvalue ref="xxf:instance('fr-parameters-instance')/document" value="digest(string(random(true())), 'MD5', 'hex')"/>
+                                    <xf:setvalue ref="xxf:instance('fr-parameters-instance')/document" value="secure:randomHexId()"/>
                                     <!-- Actually save -->
                                     <xf:dispatch name="fr-save-action" target="fr-persistence-model">
                                         <xxf:context name="fr:check-data-valid" value="true()"/>

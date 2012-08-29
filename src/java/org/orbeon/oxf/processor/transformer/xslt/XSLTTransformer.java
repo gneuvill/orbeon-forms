@@ -64,7 +64,6 @@ import javax.xml.transform.sax.TransformerHandler;
 import javax.xml.transform.stream.StreamResult;
 import java.io.*;
 import java.lang.reflect.Method;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.*;
@@ -536,48 +535,42 @@ public abstract class XSLTTransformer extends ProcessorImpl {
             @Override
             protected CacheKey getLocalKey(PipelineContext context) {
                 makeSureStateIsSet(context);
-                try {
-                    final KeyValidity configKeyValidity = getInputKeyValidity(context, INPUT_CONFIG);
-                    URIReferences uriReferences = getURIReferences(context, configKeyValidity);
-                    if (uriReferences == null || uriReferences.hasDynamicDocumentReferences)
-                        return null;
-                    final List<CacheKey> keys = new ArrayList<CacheKey>();
-                    keys.add(configKeyValidity.key);
-                    final List<URIReference> allURIReferences = new ArrayList<URIReference>();
-                    allURIReferences.addAll(uriReferences.stylesheetReferences);
-                    allURIReferences.addAll(uriReferences.documentReferences);
-                    for (Iterator<URIReference> i = allURIReferences.iterator(); i.hasNext();) {
-                        final URIReference uriReference = i.next();
-                        keys.add(new InternalCacheKey(XSLTTransformer.this, "xsltURLReference", URLFactory.createURL(uriReference.context, uriReference.spec).toExternalForm()));
-                    }
-                    return new InternalCacheKey(XSLTTransformer.this, keys);
-                } catch (MalformedURLException e) {
-                    throw new OXFException(e);
+
+                final KeyValidity configKeyValidity = getInputKeyValidity(context, INPUT_CONFIG);
+                URIReferences uriReferences = getURIReferences(context, configKeyValidity);
+                if (uriReferences == null || uriReferences.hasDynamicDocumentReferences)
+                    return null;
+                final List<CacheKey> keys = new ArrayList<CacheKey>();
+                keys.add(configKeyValidity.key);
+                final List<URIReference> allURIReferences = new ArrayList<URIReference>();
+                allURIReferences.addAll(uriReferences.stylesheetReferences);
+                allURIReferences.addAll(uriReferences.documentReferences);
+                for (Iterator<URIReference> i = allURIReferences.iterator(); i.hasNext();) {
+                    final URIReference uriReference = i.next();
+                    keys.add(new InternalCacheKey(XSLTTransformer.this, "xsltURLReference", URLFactory.createURL(uriReference.context, uriReference.spec).toExternalForm()));
                 }
+                return new InternalCacheKey(XSLTTransformer.this, keys);
             }
 
             @Override
             protected Object getLocalValidity(PipelineContext context) {
                 makeSureStateIsSet(context);
-                try {
-                    final KeyValidity configKeyValidity = getInputKeyValidity(context, INPUT_CONFIG);
-                    final URIReferences uriReferences = getURIReferences(context, configKeyValidity);
-                    if (uriReferences == null || uriReferences.hasDynamicDocumentReferences)
-                        return null;
-                    final List validities = new ArrayList();
-                    validities.add(configKeyValidity.validity);
-                    final List<URIReference> allURIReferences = new ArrayList<URIReference>();
-                    allURIReferences.addAll(uriReferences.stylesheetReferences);
-                    allURIReferences.addAll(uriReferences.documentReferences);
-                    for (Iterator<URIReference> i = allURIReferences.iterator(); i.hasNext();) {
-                        final URIReference uriReference = i.next();
-                        final Processor urlGenerator = new URLGenerator(URLFactory.createURL(uriReference.context, uriReference.spec));
-                        validities.add(((ProcessorOutputImpl) urlGenerator.createOutput(OUTPUT_DATA)).getValidity(context));
-                    }
-                    return validities;
-                } catch (IOException e) {
-                    throw new OXFException(e);
+
+                final KeyValidity configKeyValidity = getInputKeyValidity(context, INPUT_CONFIG);
+                final URIReferences uriReferences = getURIReferences(context, configKeyValidity);
+                if (uriReferences == null || uriReferences.hasDynamicDocumentReferences)
+                    return null;
+                final List validities = new ArrayList();
+                validities.add(configKeyValidity.validity);
+                final List<URIReference> allURIReferences = new ArrayList<URIReference>();
+                allURIReferences.addAll(uriReferences.stylesheetReferences);
+                allURIReferences.addAll(uriReferences.documentReferences);
+                for (Iterator<URIReference> i = allURIReferences.iterator(); i.hasNext();) {
+                    final URIReference uriReference = i.next();
+                    final Processor urlGenerator = new URLGenerator(URLFactory.createURL(uriReference.context, uriReference.spec));
+                    validities.add(((ProcessorOutputImpl) urlGenerator.createOutput(OUTPUT_DATA)).getValidity(context));
                 }
+                return validities;
             }
 
             private URIReferences getURIReferences(PipelineContext context, KeyValidity configKeyValidity) {
@@ -587,26 +580,22 @@ public abstract class XSLTTransformer extends ProcessorImpl {
             }
 
             private KeyValidity createStyleSheetKeyValidity(PipelineContext context, KeyValidity configKeyValidity, URIReferences uriReferences) {
-                try {
-                    if (configKeyValidity == null)
-                        return null;
+                if (configKeyValidity == null)
+                    return null;
 
-                    final List<CacheKey> keys = new ArrayList<CacheKey>();
-                    final List<Object> validities = new ArrayList<Object>();
-                    keys.add(configKeyValidity.key);
-                    validities.add(configKeyValidity.validity);
-                    for (Iterator<URIReference> i = uriReferences.stylesheetReferences.iterator(); i.hasNext();) {
-                        final URIReference uriReference = i.next();
-                        final URL url = URLFactory.createURL(uriReference.context, uriReference.spec);
-                        keys.add(new InternalCacheKey(XSLTTransformer.this, "xsltURLReference", url.toExternalForm()));
-                        final Processor urlGenerator = new URLGenerator(url);
-                        validities.add(((ProcessorOutputImpl) urlGenerator.createOutput(OUTPUT_DATA)).getValidity(context));//FIXME: can we do better? See URL generator.
-                    }
-
-                    return new KeyValidity(new InternalCacheKey(XSLTTransformer.this, keys), validities);
-                } catch (MalformedURLException e) {
-                    throw new OXFException(e);
+                final List<CacheKey> keys = new ArrayList<CacheKey>();
+                final List<Object> validities = new ArrayList<Object>();
+                keys.add(configKeyValidity.key);
+                validities.add(configKeyValidity.validity);
+                for (Iterator<URIReference> i = uriReferences.stylesheetReferences.iterator(); i.hasNext();) {
+                    final URIReference uriReference = i.next();
+                    final URL url = URLFactory.createURL(uriReference.context, uriReference.spec);
+                    keys.add(new InternalCacheKey(XSLTTransformer.this, "xsltURLReference", url.toExternalForm()));
+                    final Processor urlGenerator = new URLGenerator(url);
+                    validities.add(((ProcessorOutputImpl) urlGenerator.createOutput(OUTPUT_DATA)).getValidity(context));//FIXME: can we do better? See URL generator.
                 }
+
+                return new KeyValidity(new InternalCacheKey(XSLTTransformer.this, keys), validities);
             }
 
             // Create a Saxon Configuration which adds the Orbeon pipeline function library
@@ -847,7 +836,7 @@ public abstract class XSLTTransformer extends ProcessorImpl {
 
                 @Override
                 public String getURIForPrefix(String prefix) {
-                    return namespaces.getURI(prefix);
+                    return namespaceContext.getURI(prefix);
                 }
 
                 @Override
@@ -878,7 +867,7 @@ public abstract class XSLTTransformer extends ProcessorImpl {
         private Locator locator;
         private URIReferences uriReferences = new URIReferences();
         private String systemId;
-        private final NamespaceSupport3 namespaces = new NamespaceSupport3();
+        private final NamespaceContext namespaceContext = new NamespaceContext();
 
         public StylesheetForwardingXMLReceiver() {
             super();
@@ -901,13 +890,13 @@ public abstract class XSLTTransformer extends ProcessorImpl {
 
         @Override
         public void startPrefixMapping(String prefix, String uri) throws SAXException {
-            namespaces.startPrefixMapping(prefix, uri);
+            namespaceContext.startPrefixMapping(prefix, uri);
             super.startPrefixMapping(prefix, uri);
         }
 
         @Override
         public void startElement(String uri, String localname, String qName, Attributes attributes) throws SAXException {
-            namespaces.startElement();
+            namespaceContext.startElement();
             // Save system id
             if (systemId == null && locator != null)
                 systemId = locator.getSystemId();
@@ -979,7 +968,7 @@ public abstract class XSLTTransformer extends ProcessorImpl {
         @Override
         public void endElement(String uri, String localname, String qName) throws SAXException {
             super.endElement(uri, localname, qName);
-            namespaces.endElement();
+            namespaceContext.endElement();
         }
 
         @Override

@@ -34,6 +34,8 @@ case class DynamicState(
     deploymentType: Option[String],
     requestContextPath: Option[String],
     requestPath: Option[String],
+    requestHeaders: Seq[(String, Seq[String])],
+    requestParameters: Seq[(String, Seq[String])],
     containerType: Option[String],
     containerNamespace: Option[String],
     pathMatchers: Seq[Byte],
@@ -56,6 +58,8 @@ case class DynamicState(
     def decodeDeploymentTypeJava = deploymentType.orNull
     def decodeRequestContextPathJava = requestContextPath.orNull
     def decodeRequestPathJava = requestPath.orNull
+    def decodeRequestHeadersJava = requestHeaders.toMap mapValues (_.toArray)
+    def decodeRequestParametersJava = requestParameters.toMap mapValues (_.toArray)
     def decodeContainerTypeJava = containerType.orNull
     def decodeContainerNamespaceJava = containerNamespace.orNull
     def decodePathMatchersJava = decodePathMatchers.asJava
@@ -80,7 +84,7 @@ case class DynamicState(
         XFormsUtils.encodeBytes(
             toByteArray(this),
             compress,
-            if (isForceEncryption) XFormsProperties.getXFormsPassword else null
+            isForceEncryption
         )
 
     // Encode to an XML representation (as of 2012-02-05, used only by unit tests)
@@ -253,6 +257,8 @@ object DynamicState {
             Option(document.getDeploymentType) map (_.toString),
             Option(document.getRequestContextPath),
             Option(document.getRequestPath),
+            document.getRequestHeaders mapValues (_.toList) toList,
+            document.getRequestParameters mapValues (_.toList) toList,
             Option(document.getContainerType),
             Option(document.getContainerNamespace),
             toByteSeq(document.getVersionedPathMatchers.asScala.toList),
@@ -260,14 +266,14 @@ object DynamicState {
             toByteSeq(document.getPendingUploads.asScala.toSet),
             Option(document.getTemplate) map (_.asByteSeq), // template returns its own serialization
             toByteSeq(Option(document.getLastAjaxResponse)),
-            toByteSeq(document.getAllModels.asScala flatMap (_.getInstances.asScala) filter (_.mustSerialize) map (new InstanceState(_)) toList),
+            toByteSeq(document.getAllModels flatMap (_.getInstances.asScala) filter (_.mustSerialize) map (new InstanceState(_)) toList),
             toByteSeq(controlsToSerialize(document).toList)
         )
     }
 
     // Create a DynamicState from an encoded string representation
     def apply(encoded: String): DynamicState = {
-        val bytes = XFormsUtils.decodeBytes(encoded, XFormsProperties.getXFormsPassword)
+        val bytes = XFormsUtils.decodeBytes(encoded)
         fromByteArray[DynamicState](bytes)
     }
 

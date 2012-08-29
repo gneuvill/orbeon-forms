@@ -13,25 +13,14 @@
 */
 package org.orbeon.oxf.xforms.function.xxforms
 
+import org.orbeon.oxf.xforms.function.{FunctionSupport, XFormsFunction}
 import org.orbeon.saxon.expr.XPathContext
-import org.orbeon.oxf.xforms.function.XFormsFunction
-import org.orbeon.oxf.xforms.control.XFormsControl
-import org.orbeon.oxf.xforms.XFormsUtils
 
-class XXFormsControlElement extends XFormsFunction {
+class XXFormsControlElement extends XFormsFunction with FunctionSupport {
 
-    override def evaluateItem(xpathContext: XPathContext) =
-        Option(if (argument.length == 0) xpathContext.getContextItem else argument(0).evaluateItem(xpathContext)) map
-            (item ⇒ resolveOrFindByEffectiveId(xpathContext, item.getStringValue)) flatMap {
-                case control: XFormsControl ⇒
-                    Some(getContainingDocument(xpathContext).getStaticState.documentWrapper.wrap(control.element))
-                case _ ⇒
-                    None
-            } orNull
-
-    def resolveOrFindByEffectiveId(xpathContext: XPathContext, staticOrEffectiveId: String) =
-        if (XFormsUtils.isEffectiveId(staticOrEffectiveId))
-            getContainingDocument(xpathContext).getObjectByEffectiveId(staticOrEffectiveId)
-        else
-            getXBLContainer(xpathContext).resolveObjectByIdInScope(getSourceEffectiveId(xpathContext), staticOrEffectiveId, null)
+    override def evaluateItem(xpathContext: XPathContext) = {
+        implicit val ctx = xpathContext
+        relevantControl(0) map
+            (control ⇒ context.containingDocument.getStaticState.documentWrapper.wrap(control.element)) orNull
+    }
 }

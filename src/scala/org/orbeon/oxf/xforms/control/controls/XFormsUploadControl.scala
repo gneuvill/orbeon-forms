@@ -13,7 +13,7 @@
  */
 package org.orbeon.oxf.xforms.control.controls
 
-import org.apache.commons.lang.StringUtils
+import org.apache.commons.lang3.StringUtils
 import org.dom4j.Element
 import org.orbeon.oxf.common.OXFException
 import org.orbeon.oxf.common.ValidationException
@@ -28,7 +28,7 @@ import XFormsUploadControl._
 import org.orbeon.oxf.xml.Dom4j
 import org.orbeon.oxf.xml.XMLConstants._
 import org.orbeon.oxf.util.{SecureUtils, Multipart, NetUtils}
-import org.orbeon.oxf.xforms.{XFormsProperties, XFormsContainingDocument}
+import org.orbeon.oxf.xforms.XFormsContainingDocument
 import java.net.{URLEncoder, URI}
 import org.orbeon.oxf.xforms.event.{Dispatch, XFormsEvent}
 import org.orbeon.oxf.util.ScalaUtils._
@@ -88,16 +88,16 @@ class XFormsUploadControl(container: XBLContainer, parent: XFormsControl, elemen
     def handleUploadedFile(value: String, filename: String, mediatype: String, size: String): Unit =
         if (size != "0" || filename != "") {
             // Set value of uploaded file into the instance (will be xs:anyURI or xs:base64Binary)
-            doStoreExternalValue(value, filename, mediatype, size)
+            storeExternalValueAndMetadata(value, filename, mediatype, size)
         }
 
     // This can only be called from the client to clear the value
     override def storeExternalValue(value: String): Unit = {
         assert(value == "")
-        doStoreExternalValue(value, "", "", "")
+        storeExternalValueAndMetadata(value, "", "", "")
     }
 
-    private def doStoreExternalValue(rawNewValue: String, filename: String, mediatype: String, size: String): Unit = {
+    private def storeExternalValueAndMetadata(rawNewValue: String, filename: String, mediatype: String, size: String): Unit = {
 
         def isFileURL(url: String) =
             NetUtils.urlHasProtocol(url) && url.startsWith("file:")
@@ -162,7 +162,7 @@ class XFormsUploadControl(container: XBLContainer, parent: XFormsControl, elemen
                     throw new OXFException("Unexpected incoming value for xforms:upload: " + newValue)
 
             // Store the value
-            super.storeExternalValue(valueToStore)
+            doStoreExternalValue(valueToStore)
 
             // NOTE: We used to call markFileMetadataDirty() here, but it was wrong, because getBackCopy would then
             // obtain the new data, and control diffs wouldn't work properly. This was done for XFormsSubmissionUtils,
@@ -222,7 +222,7 @@ object XFormsUploadControl {
 
     // Get the MAC for a given string
     def hmac(value: String) =
-        SecureUtils.hmacString(XFormsProperties.getXFormsPassword, value, "sha-1", "hex")
+        SecureUtils.hmacString(value, "hex")
 
     // Remove the MAC from the URL
     def removeMAC(url: String) = {
@@ -276,7 +276,7 @@ object XFormsUploadControl {
 
     private def iterateFileElement(filesElement: Element) =
         for {
-            parameterElement ← Option(filesElement).toIterator flatMap (Dom4j.elements(_))
+            parameterElement ← Option(filesElement).toIterator flatMap Dom4j.elements
 
             // Extract all parameters
             name = parameterElement.element("name").getTextTrim

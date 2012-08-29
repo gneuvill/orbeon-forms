@@ -13,23 +13,19 @@
  */
 package org.orbeon.oxf.xforms.function.xxforms
 
-import org.orbeon.oxf.xforms.function.XFormsFunction
+import org.orbeon.oxf.xforms.function.{FunctionSupport, XFormsFunction}
 import org.orbeon.saxon.expr.XPathContext
 import org.orbeon.oxf.xforms.control.XFormsControl
 import org.orbeon.saxon.value.StringValue
 
-class XXFormsLHHA extends XFormsFunction {
+class XXFormsLHHA extends XFormsFunction with FunctionSupport {
 
     override def evaluateItem(xpathContext: XPathContext) = {
 
-        def evaluateControlItem(f: XFormsControl ⇒ String) = {
-            val controlStaticId = argument(0).evaluateAsString(xpathContext).toString
-            getXBLContainer(xpathContext).resolveObjectByIdInScope(getSourceEffectiveId(xpathContext), controlStaticId, null) match {
-                case control: XFormsControl if control.isRelevant ⇒
-                    StringValue.makeStringValue(f(control))
-                case _ ⇒ null
-            }
-        }
+        implicit val ctx = xpathContext
+
+        def evaluateControlItem(f: XFormsControl ⇒ String) =
+            relevantControl(0) map (control ⇒ StringValue.makeStringValue(f(control))) orNull
 
         evaluateControlItem(operation match {
             case 0 ⇒ _.getLabel

@@ -17,17 +17,19 @@ import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.FileItemFactory;
 import org.apache.commons.fileupload.disk.DiskFileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.orbeon.oxf.common.OXFException;
 import org.orbeon.oxf.pipeline.api.ExternalContext;
 import org.orbeon.oxf.pipeline.api.PipelineContext;
 import org.orbeon.oxf.processor.generator.RequestGenerator;
+import org.orbeon.oxf.resources.ResourceManagerWrapper;
 import org.orbeon.oxf.resources.URLFactory;
 import org.orbeon.oxf.webapp.WebAppListener;
 import org.orbeon.oxf.xml.XMLReceiverAdapter;
 import org.orbeon.oxf.xml.XMLUtils;
 import org.orbeon.oxf.xml.dom4j.Dom4jUtils;
+import org.orbeon.oxf.xml.dom4j.LocationData;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.*;
@@ -41,7 +43,6 @@ public class NetUtils {
     private static Logger logger = LoggerFactory.createLogger(NetUtils.class);
 
     private static final Pattern PATTERN_NO_AMP;
-    private static final Pattern PATTERN_AMP;
 
     public static final int COPY_BUFFER_SIZE = 8192;
     public static final String STANDARD_PARAMETER_ENCODING = "utf-8";
@@ -61,7 +62,6 @@ public class NetUtils {
     static {
         final String token = "[^=&]";
         PATTERN_NO_AMP = Pattern.compile( "(" + token + "+)=(" + token + "*)(?:&|(?<!&)\\z)" );
-        PATTERN_AMP = Pattern.compile( "(" + token + "+)=(" + token + "*)(?:&amp;|&|(?<!&amp;|&)\\z)" );
     }
 
     /**
@@ -267,30 +267,29 @@ public class NetUtils {
     }
 
     public static String getContentTypeCharset(String contentType) {
-        final Map<String, String> parameters = getContentTypeParameters(contentType);
-        return (parameters == null) ? null : parameters.get("charset");
+        return getContentTypeParameters(contentType).get("charset");
     }
 
     public static Map<String, String> getContentTypeParameters(String contentType) {
         if (contentType == null)
-            return null;
+            return Collections.emptyMap();
 
         // Check whether there may be parameters
         final int semicolonIndex = contentType.indexOf(";");
         if (semicolonIndex == -1)
-            return null;
+            return Collections.emptyMap();
 
         // Tokenize
         final StringTokenizer st = new StringTokenizer(contentType, ";");
 
         if (!st.hasMoreTokens())
-            return null; // should not happen as there should be at least the content type    
+            return Collections.emptyMap(); // should not happen as there should be at least the content type
 
         st.nextToken();
 
         // No parameters
         if (!st.hasMoreTokens())
-            return null;
+            return Collections.emptyMap();
 
         // Parse parameters
         final Map<String, String> parameters = new HashMap<String, String>();
@@ -317,21 +316,18 @@ public class NetUtils {
 
     /**
      * @param queryString a query string of the form n1=v1&n2=v2&... to decode.  May be null.
-     * @param acceptAmp -> "&amp;" if true, "&" if false
      *
      * @return a Map of String[] indexed by name, an empty Map if the query string was null
      */
-    public static Map<String, String[]> decodeQueryString(final CharSequence queryString, final boolean acceptAmp) {
+    public static Map<String, String[]> decodeQueryString(final CharSequence queryString) {
 
-        final Map<String, String[]> result = new TreeMap<String, String[]>();
+        final Map<String, String[]> result = new LinkedHashMap<String, String[]>();
         if (queryString != null) {
-            final Matcher matcher = acceptAmp ? PATTERN_AMP.matcher(queryString) : PATTERN_NO_AMP.matcher(queryString);
+            final Matcher matcher = PATTERN_NO_AMP.matcher(queryString);
             int matcherEnd = 0;
             while (matcher.find()) {
                 matcherEnd = matcher.end();
                 try {
-                    // Group 0 is the whole match, e.g. a=b, while group 1 is the first group
-                    // denoted ( with parens ) in the expression.  Hence we start with group 1.
                     final String name = URLDecoder.decode(matcher.group(1), NetUtils.STANDARD_PARAMETER_ENCODING);
                     final String value = URLDecoder.decode(matcher.group(2), NetUtils.STANDARD_PARAMETER_ENCODING);
 
@@ -465,22 +461,24 @@ public class NetUtils {
      * characters long, to avoid confusion with Windows drive letters.
      */
     public static boolean urlHasProtocol(String urlString) {
+        return getProtocol(urlString) != null;
+    }
+
+    public static String getProtocol(String urlString) {
         int colonIndex = urlString.indexOf(":");
 
-        // No protocol is there is no colon or if there is only one character in the protocol
-        if (colonIndex == -1 || colonIndex == 1)
-            return false;
+        // Require at least two characters in a protocol
+        if (colonIndex < 2)
+            return null;
 
-        // Check that there is a protocol
-        boolean allChar = true;
+        // Check that there is a protocol made only of letters
         for (int i = 0; i < colonIndex; i++) {
-            char c = urlString.charAt(i);
+            final char c = urlString.charAt(i);
             if ((c < 'a' || c > 'z') && (c < 'A' || c > 'Z')) {
-                allChar = false;
-                break;
+                return null;
             }
         }
-        return allChar;
+        return urlString.substring(0, colonIndex);
     }
 
     /**
@@ -919,5 +917,88 @@ public class NetUtils {
     public static boolean isSuccessCode(int code) {
         // Accept any success code (in particular "201 Resource Created")
         return code >= 200 && code < 300;
+    }
+
+    /**
+     * Get a File object from either a URL or a path.
+     */
+    public static File getFile(String configDirectory, String configFile, String configUrl, LocationData locationData, boolean makeDirectories) {
+
+        return configUrl == null ?
+                getFile(configDirectory, configFile, makeDirectories)
+                : getFile(configUrl, locationData, makeDirectories);
+    }
+
+    /**
+     * Find the real path of an oxf: or file: URL.
+     */
+    public static String getRealPath(String configUrl, LocationData locationData) {
+        // Use location data if present so that relative URLs can be supported
+        final URL fullURL = (locationData != null && locationData.getSystemID() != null)
+                ? URLFactory.createURL(locationData.getSystemID(), configUrl)
+                : URLFactory.createURL(configUrl);
+
+        final String realPath;
+        if (fullURL.getProtocol().equals("oxf")) {
+            // Get real path to resource path if possible
+            realPath = ResourceManagerWrapper.instance().getRealPath(fullURL.getFile());
+            if (realPath == null)
+                throw new OXFException("Unable to obtain the real path of the file using the oxf: protocol for URL: " + configUrl);
+        } else if (fullURL.getProtocol().equals("file")) {
+            String host = fullURL.getHost();
+            realPath = host + (host.length() > 0 ? ":" : "") + fullURL.getFile();
+        } else {
+            throw new OXFException("Only the file: and oxf: protocols are supported for URL: " + configUrl);
+        }
+
+        return realPath;
+    }
+
+    /**
+     * Get a File object for an oxf: or file: URL.
+     */
+    public static File getFile(String configUrl, LocationData locationData, boolean makeDirectories) {
+        return getFile(null, getRealPath(configUrl, locationData), makeDirectories);
+    }
+
+    /**
+     * Get a File object from a path.
+     */
+    public static File getFile(String configDirectory, String configFile, boolean makeDirectories) {
+
+        if (configDirectory != null && configDirectory.startsWith("oxf:")) {
+            // ???
+        }
+
+        final File file;
+        if (configDirectory == null) {
+            // No base directory specified
+            file = new File(configFile);
+        } else {
+            // Base directory specified
+            final File baseDirectory = new File(configDirectory);
+
+            // Make directories if needed
+            if (makeDirectories) {
+                if (!baseDirectory.exists()) {
+                    if (!baseDirectory.mkdirs())
+                        throw new OXFException("Directory '" + baseDirectory + "' could not be created.");
+                }
+            }
+
+            if (!baseDirectory.isDirectory() || !baseDirectory.canWrite())
+                throw new OXFException("Directory '" + baseDirectory + "' is not a directory or is not writeable.");
+
+            file = new File(baseDirectory, configFile);
+        }
+        // Make directories if needed
+        if (makeDirectories) {
+            if (!file.getParentFile().exists()) {
+                if (!file.getParentFile().mkdirs())
+                    throw new OXFException("Directory '" + file.getParentFile() + "' could not be created.");
+            }
+        }
+
+        return file;
     }
 }

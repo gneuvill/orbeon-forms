@@ -11,7 +11,8 @@
 
   The full text of the license is available at http://www.gnu.org/copyleft/lesser.html
   -->
-<group description="XForms Misc" xmlns:p="http://www.orbeon.com/oxf/pipeline"
+<group description="XForms Misc"
+    xmlns:p="http://www.orbeon.com/oxf/pipeline"
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns:xs="http://www.w3.org/2001/XMLSchema"
@@ -725,15 +726,15 @@
                          </div>
                          <xhtml:span id="xforms-select-full-template" class="xforms-template">
                              <xhtml:span class="xforms-deselected">
-                                 <xhtml:label for="$xforms-item-effective-id$">
-                                     <xhtml:input id="$xforms-item-effective-id$" type="checkbox" name="$xforms-effective-id$" value="$xforms-template-value$"/>$xforms-template-label$
+                                 <xhtml:label for="$xforms-item-id-select$">
+                                     <xhtml:input id="$xforms-item-id-select$" type="checkbox" name="$xforms-item-name$" value="$xforms-template-value$"/>$xforms-template-label$
                                  </xhtml:label>
                              </xhtml:span>
                          </xhtml:span>
                          <xhtml:span id="xforms-select1-full-template" class="xforms-template">
                              <xhtml:span class="xforms-deselected">
-                                 <xhtml:label for="$xforms-item-effective-id$">
-                                     <xhtml:input id="$xforms-item-effective-id$" type="radio" name="$xforms-effective-id$" value="$xforms-template-value$"/>$xforms-template-label$
+                                 <xhtml:label for="$xforms-item-id-select1$">
+                                     <xhtml:input id="$xforms-item-id-select1$" type="radio" name="$xforms-item-name$" value="$xforms-template-value$"/>$xforms-template-label$
                                  </xhtml:label>
                              </xhtml:span>
                          </xhtml:span>
@@ -1101,6 +1102,23 @@
                         <xxf:control id="input1">true</xxf:control>
                         <xxf:control id="input2" label="Name:" relevant="true"/>
                     </xxf:control-values>
+                </xxf:action>
+            </xxf:event-response>
+        </output>
+    </test>
+
+    <test description="#418: Prefix for xxforms:separator is not declared" name="oxf:pipeline">
+        <!-- See: https://github.com/orbeon/orbeon-forms/issues/418 -->
+        <input name="config" href="wrap-xforms-state.xpl"/>
+        <!-- Put in external file to make sure we control namespaces -->
+        <input name="document" href="418.xhtml"/>
+        <output name="response">
+            <xxf:event-response xmlns:xxf="http://orbeon.org/oxf/xml/xforms">
+                <xxf:dynamic-state>
+                    <dynamic-state/>
+                </xxf:dynamic-state>
+                <xxf:action>
+                    <xxf:control-values/>
                 </xxf:action>
             </xxf:event-response>
         </output>

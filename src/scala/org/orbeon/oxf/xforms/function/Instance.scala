@@ -13,7 +13,7 @@
  */
 package org.orbeon.oxf.xforms.function
 
-import org.apache.commons.lang.StringUtils
+import org.apache.commons.lang3.StringUtils
 import org.orbeon.oxf.xforms.XFormsModel
 import org.orbeon.saxon.expr._
 import org.orbeon.saxon.om._
@@ -27,11 +27,13 @@ class Instance extends XFormsFunction {
 
     override def iterate(xpathContext: XPathContext): SequenceIterator = {
 
+        implicit val ctx = xpathContext
+
         // "If the argument is omitted or is equal to the empty string, then the root element node (also called the
         // document element node) is returned for the default instance in the model that contains the current context
         // node."
 
-        val instanceId = argument.lift(0) map (_.evaluateAsString(xpathContext).toString.trim) filter (StringUtils.isNotBlank(_))
+        val instanceId = argument.lift(0) map (_.evaluateAsString(xpathContext).toString.trim) filter StringUtils.isNotBlank
 
         // Get model and instance with given id for that model only
 
@@ -42,7 +44,7 @@ class Instance extends XFormsFunction {
 
         // NOTE: Model can be null when there is no model in scope at all
         val iterator =
-            Option(getModel(xpathContext)) match {
+            Option(context.model) match {
                 case Some(model) ⇒
 
                     // The idea here is that we first try to find a concrete instance. If that fails, we try to see if it
@@ -73,7 +75,7 @@ class Instance extends XFormsFunction {
             case Some(iterator) ⇒
                 iterator
             case None ⇒
-                getContainingDocument(xpathContext).getIndentedLogger(XFormsModel.LOGGING_CATEGORY).logWarning("instance()", "instance not found", "instance id", instanceId.orNull)
+                context.containingDocument.getIndentedLogger(XFormsModel.LOGGING_CATEGORY).logWarning("instance()", "instance not found", "instance id", instanceId.orNull)
                 EmptyIterator.getInstance
         }
     }

@@ -19,6 +19,7 @@ import org.orbeon.saxon.`type`.BuiltInAtomicType._
 import org.orbeon.oxf.xforms.function.xxforms._
 import org.orbeon.oxf.xml.OrbeonFunctionLibrary
 import org.orbeon.oxf.xforms.function.{Event, If}
+import org.orbeon.oxf.xforms.function.exforms.EXFormsMIP
 
 /*
  * Orbeon extension functions that depend on the XForms environment.
@@ -189,20 +190,20 @@ trait XXFormsEnvFunctions extends OrbeonFunctionLibrary {
         Fun("alert", classOf[XXFormsLHHA], 3, 1, STRING, ALLOWS_ZERO_OR_ONE,
             Arg(STRING, EXACTLY_ONE)
         )
-    
-        // xxforms:effective-id
-        Fun("effective-id", classOf[XXFormsEffectiveId], 0, 0, STRING, ALLOWS_ZERO_OR_ONE,
+
+        // xxforms:visited
+        Fun("visited", classOf[XXFormsVisited], 0, 1, BOOLEAN, ALLOWS_ZERO_OR_ONE,
             Arg(STRING, EXACTLY_ONE)
         )
 
         // xxforms:absolute-id
-        Fun("absolute-id", classOf[XXFormsAbsoluteId], 0, 0, STRING, ALLOWS_ZERO_OR_ONE,
+        Fun("absolute-id", classOf[XXFormsAbsoluteId], 0, 1, STRING, ALLOWS_ZERO_OR_ONE,
             Arg(STRING, EXACTLY_ONE)
         )
     
         // xxforms:control-element
-        Fun("control-element", classOf[XXFormsControlElement], 0, 0, Type.NODE_TYPE, ALLOWS_ZERO_OR_ONE,
-            Arg(Type.NODE_TYPE, ALLOWS_ZERO_OR_MORE)
+        Fun("control-element", classOf[XXFormsControlElement], 0, 1, Type.NODE_TYPE, ALLOWS_ZERO_OR_ONE,
+            Arg(STRING, EXACTLY_ONE)
         )
     
         // xxforms:extract-document
@@ -220,6 +221,21 @@ trait XXFormsEnvFunctions extends OrbeonFunctionLibrary {
             Arg(STRING, ALLOWS_ZERO_OR_ONE),
             Arg(STRING, ALLOWS_ZERO_OR_ONE),
             Arg(STRING, ALLOWS_ZERO_OR_ONE)
+        )
+
+        // xxforms:relevant() (NOTE: also from exforms)
+        Fun("relevant", classOf[EXFormsMIP], 0, 0, BOOLEAN, EXACTLY_ONE,
+            Arg(Type.NODE_TYPE, ALLOWS_ZERO_OR_MORE)
+        )
+
+        // xxforms:readonly() (NOTE: also from exforms)
+        Fun("readonly", classOf[EXFormsMIP], 1, 0, BOOLEAN, EXACTLY_ONE,
+            Arg(Type.NODE_TYPE, ALLOWS_ZERO_OR_MORE)
+        )
+
+        // xxforms:required() (NOTE: also from exforms)
+        Fun("required", classOf[EXFormsMIP], 2, 0, BOOLEAN, EXACTLY_ONE,
+            Arg(Type.NODE_TYPE, ALLOWS_ZERO_OR_MORE)
         )
     }
 }

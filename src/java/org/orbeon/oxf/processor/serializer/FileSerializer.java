@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2010 Orbeon, Inc.
+ * Copyright (C) 2012 Orbeon, Inc.
  *
  * This program is free software; you can redistribute it and/or modify it under the terms of the
  * GNU Lesser General Public License as published by the Free Software Foundation; either version
@@ -23,7 +23,6 @@ import org.orbeon.oxf.pipeline.api.XMLReceiver;
 import org.orbeon.oxf.processor.*;
 import org.orbeon.oxf.processor.serializer.store.ResultStore;
 import org.orbeon.oxf.processor.serializer.store.ResultStoreOutputStream;
-import org.orbeon.oxf.properties.PropertySet;
 import org.orbeon.oxf.util.LoggerFactory;
 import org.orbeon.oxf.util.NetUtils;
 import org.orbeon.oxf.xforms.processor.XFormsResourceServer;
@@ -208,7 +207,8 @@ public class FileSerializer extends ProcessorImpl {
             final ProcessorInput dataInput = getInputByName(INPUT_DATA);
 
             // Get file object
-            final File file = getFile(config.getDirectory(), config.getFile(), config.isMakeDirectories(), getPropertySet());
+            final String directory = config.getDirectory() != null ? config.getDirectory() : getPropertySet().getString(DIRECTORY_PROPERTY);
+            final File file = NetUtils.getFile(directory, config.getFile(), config.getUrl(), getLocationData(), config.isMakeDirectories());
 
             // NOTE: Caching here is broken, so we never cache. This is what we should do in case
             // we want caching:
@@ -360,39 +360,5 @@ public class FileSerializer extends ProcessorImpl {
                 return new Config(readInputAsDOM4J(context, input));
             }
         });
-    }
-
-    public static File getFile(String configDirectory, String configFile, boolean makeDirectories, PropertySet propertySet) {
-        final File file;
-        final String directoryProperty = (propertySet != null) ? propertySet.getString(DIRECTORY_PROPERTY) : null;
-        if (directoryProperty == null && configDirectory == null) {
-            // No base directory specified
-            file = new File(configFile);
-        } else {
-            // Base directory specified
-            final File baseDirectory = (configDirectory != null) ? new File(configDirectory) : new File(directoryProperty);
-
-            // Make directories if needed
-            if (makeDirectories) {
-                if (!baseDirectory.exists()) {
-                    if (!baseDirectory.mkdirs())
-                        throw new OXFException("Directory '" + baseDirectory + "' could not be created.");
-                }
-            }
-
-            if (!baseDirectory.isDirectory() || !baseDirectory.canWrite())
-                throw new OXFException("Directory '" + baseDirectory + "' is not a directory or is not writeable.");
-
-            file = new File(baseDirectory, configFile);
-        }
-        // Make directories if needed
-        if (makeDirectories) {
-            if (!file.getParentFile().exists()) {
-                if (!file.getParentFile().mkdirs())
-                    throw new OXFException("Directory '" + file.getParentFile() + "' could not be created.");
-            }
-        }
-
-        return file;
     }
 }

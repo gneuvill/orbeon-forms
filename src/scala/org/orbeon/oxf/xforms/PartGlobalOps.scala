@@ -21,7 +21,7 @@ import org.dom4j.{Element, QName}
 import java.util.{List ⇒ JList, Collection ⇒ JCollection}
 import org.orbeon.oxf.xml.SAXStore
 import xbl.{Scope, XBLBindings, ConcreteBinding}
-import org.apache.commons.lang.StringUtils
+import org.apache.commons.lang3.StringUtils
 import collection.JavaConverters._
 
 trait PartGlobalOps {
@@ -83,7 +83,7 @@ trait PartGlobalOps {
     }
 
     def getSelect1Analysis(prefixedId: String) = getControlAnalysisOption(prefixedId) match {
-        case Some(selectionControl: SelectionControl) ⇒ selectionControl
+        case Some(selectionControl: SelectionControlTrait) ⇒ selectionControl
         case _ ⇒ null
     }
 

@@ -13,7 +13,7 @@
  */
 package org.orbeon.oxf.xforms;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.dom4j.Document;
 import org.dom4j.Element;
@@ -24,10 +24,7 @@ import org.orbeon.oxf.pipeline.api.ExternalContext;
 import org.orbeon.oxf.pipeline.api.PipelineContext;
 import org.orbeon.oxf.processor.PageFlowControllerProcessor;
 import org.orbeon.oxf.servlet.OrbeonXFormsFilter;
-import org.orbeon.oxf.util.IndentedLogger;
-import org.orbeon.oxf.util.NetUtils;
-import org.orbeon.oxf.util.URLRewriterUtils;
-import org.orbeon.oxf.util.UUIDUtils;
+import org.orbeon.oxf.util.*;
 import org.orbeon.oxf.xforms.action.XFormsAPI;
 import org.orbeon.oxf.xforms.analysis.XPathDependencies;
 import org.orbeon.oxf.xforms.control.XFormsControl;
@@ -64,7 +61,7 @@ import java.util.concurrent.locks.Lock;
  * o Contains XForms controls
  * o Handles event handlers hierarchy
  */
-public class XFormsContainingDocument extends XBLContainer implements XFormsDocumentLifecycle, Cacheable {
+public class XFormsContainingDocument extends XBLContainer implements XFormsDocumentLifecycle, Cacheable, XFormsObject {
 
     // Special id name for the top-level containing document
     public static final String CONTAINING_DOCUMENT_PSEUDO_ID = "#document";
@@ -125,6 +122,8 @@ public class XFormsContainingDocument extends XBLContainer implements XFormsDocu
     private XFormsConstants.DeploymentType deploymentType;
     private String requestContextPath;
     private String requestPath;
+    private scala.collection.immutable.Map<String, String[]> requestHeaders;
+    private scala.collection.immutable.Map<String, String[]> requestParameters;
     private String containerType;
     private String containerNamespace;
     private List<URLRewriterUtils.PathMatcher> versionedPathMatchers;
@@ -174,7 +173,7 @@ public class XFormsContainingDocument extends XBLContainer implements XFormsDocu
         setLocationData(staticState.locationData());
 
         // Create UUID for this document instance
-        this.uuid = UUIDUtils.createPseudoUUID();
+        this.uuid = SecureUtils.randomHexId();
 
         // Initialize request information
         {
@@ -270,6 +269,9 @@ public class XFormsContainingDocument extends XBLContainer implements XFormsDocu
                 this.requestPath = request.getRequestPath();
         }
 
+        this.requestHeaders = immutableHeadersMap(request);
+        this.requestParameters = immutableParametersMap(request);
+
         this.containerType = request.getContainerType();
         this.containerNamespace = StringUtils.defaultIfEmpty(externalContext.getRequest().getContainerNamespace(), "");
     }
@@ -346,6 +348,8 @@ public class XFormsContainingDocument extends XBLContainer implements XFormsDocu
             this.deploymentType = XFormsConstants.DeploymentType.valueOf(dynamicState.decodeDeploymentTypeJava());
             this.requestContextPath = dynamicState.decodeRequestContextPathJava();
             this.requestPath = dynamicState.decodeRequestPathJava();
+            this.requestHeaders = dynamicState.decodeRequestHeadersJava();
+            this.requestParameters = dynamicState.decodeRequestParametersJava();
             this.containerType = dynamicState.decodeContainerTypeJava();
             this.containerNamespace = dynamicState.decodeContainerNamespaceJava();
         } else {
@@ -397,7 +401,8 @@ public class XFormsContainingDocument extends XBLContainer implements XFormsDocu
         return threadLocal.get();
     }
 
-    public PartAnalysis getPartAnalysis() {
+    @Override
+    public PartAnalysis partAnalysis() {
         return staticState.topLevelPart();
     }
 
@@ -457,6 +462,14 @@ public class XFormsContainingDocument extends XBLContainer implements XFormsDocu
      */
     public String getRequestPath() {
         return requestPath;
+    }
+
+    public scala.collection.immutable.Map<String, String[]> getRequestHeaders() {
+        return requestHeaders;
+    }
+
+    public scala.collection.immutable.Map<String, String[]> getRequestParameters() {
+        return requestParameters;
     }
 
     /**
@@ -527,23 +540,25 @@ public class XFormsContainingDocument extends XBLContainer implements XFormsDocu
      * @param effectiveId   effective id of the target
      * @return              object, or null if not found
      */
-    public Object getObjectByEffectiveId(String effectiveId) {
+    public XFormsObject getObjectByEffectiveId(String effectiveId) {
 
         // Search in parent (models and this)
         {
-            final Object resultObject = super.getObjectByEffectiveId(effectiveId);
+            final XFormsObject resultObject = super.getObjectByEffectiveId(effectiveId);
             if (resultObject != null)
                 return resultObject;
         }
 
         // Search in controls
         {
-            final Object resultObject = xformsControls.getObjectByEffectiveId(effectiveId);
+            final XFormsObject resultObject = xformsControls.getObjectByEffectiveId(effectiveId);
             if (resultObject != null)
                 return resultObject;
         }
 
         // Check container id
+        // TODO: This should no longer be needed since we have a root control, right? In which case, the document would
+        // no longer need to be an XFormsObject.
         if (effectiveId.equals(getEffectiveId()))
             return this;
 
@@ -1056,7 +1071,7 @@ public class XFormsContainingDocument extends XBLContainer implements XFormsDocu
         addAllModels();
     }
 
-    protected void initializeNestedControls() {
+    public void initializeNestedControls() {
         // Call-back from super class models initialization
 
         // This is important because if controls use binds, those must be up to date. In addition, MIP values will be up
@@ -1090,7 +1105,7 @@ public class XFormsContainingDocument extends XBLContainer implements XFormsDocu
     }
 
     @Override
-    protected List<XFormsControl> getChildrenControls(XFormsControls controls) {
+    public List<XFormsControl> getChildrenControls(XFormsControls controls) {
         return controls.getCurrentControlTree().getChildren();
     }
 

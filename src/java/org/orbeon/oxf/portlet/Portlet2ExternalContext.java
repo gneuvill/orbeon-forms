@@ -194,7 +194,7 @@ public class Portlet2ExternalContext implements ExternalContext {
                     // We encoded query parameters directly into the resource id in this case
                     final String queryString = NetUtils.getQueryString(((ResourceRequest) portletRequest).getResourceID());
                     if (queryString != null)
-                        parameterMap = Collections.unmodifiableMap(StringConversions.stringArrayMapToObjectArrayMap(NetUtils.decodeQueryString(queryString, false)));
+                        parameterMap = Collections.unmodifiableMap(StringConversions.stringArrayMapToObjectArrayMap(NetUtils.decodeQueryString(queryString)));
                     else
                         parameterMap = Collections.emptyMap();
                 } else {
@@ -588,7 +588,7 @@ public class Portlet2ExternalContext implements ExternalContext {
         return request;
     }
 
-    public Response getResponse() {
+    public ExternalContext.Response getResponse() {
         if (response == null)
             response = new BufferedResponse(request);
         return response;
